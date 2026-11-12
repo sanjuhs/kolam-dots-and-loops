@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Kolam · Dots &amp; Loops</title>
+<meta name="description" content="A calm, free rangoli puzzle. Turn the pieces until the kolam closes around every dot.">
+<meta name="theme-color" content="#6b2616">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kolam">
+<style>
+:root{--g1:#8a3420;--g2:#541c10;--chalk:#fff6e6;--gold:#f6b93b;--ink:rgba(255,246,230,.82)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--chalk);
+  background:radial-gradient(120% 90% at 50% 35%,var(--g1),var(--g2));
+  transition:background .8s;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+  background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.4px);background-size:22px 22px}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;
+  padding:max(14px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.screen.on{display:flex;animation:fade .45s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+h1,h2,.serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;font-weight:500;margin:0}
+button{font:inherit;color:inherit;background:rgba(255,246,230,.1);border:1px solid rgba(255,246,230,.28);
+  border-radius:999px;padding:10px 18px;cursor:pointer;transition:background .2s,transform .1s}
+button:hover{background:rgba(255,246,230,.18)}
+button:active{transform:scale(.96)}
+button.primary{background:var(--chalk);color:#5a1f12;border-color:var(--chalk);font-weight:600;padding:14px 34px;font-size:1.1rem}
+button.primary:hover{background:#fff}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* home */
+#home{align-items:center;justify-content:center;text-align:center;gap:14px}
+#home h1{font-size:clamp(2.4rem,9vw,4rem);letter-spacing:.04em}
+#home .sub{color:var(--ink);font-size:1.05rem;margin-top:-6px}
+#homeArt{width:min(62vw,38vh);height:min(62vw,38vh);animation:breathe 7s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.035)}}
+#home .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#home .free{color:var(--ink);font-size:.82rem;opacity:.8}
+
+/* game */
+.bar{display:flex;align-items:center;gap:8px}
+.bar .mid{flex:1;text-align:center;line-height:1.15}
+.bar .mid b{display:block;font-size:1.25rem;font-weight:500}
+.bar .mid span{font-size:.78rem;color:var(--ink);letter-spacing:.08em;text-transform:uppercase}
+.bar button{padding:8px 14px;font-size:.92rem;min-width:44px;min-height:40px}
+#boardWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 0}
+svg.kolam{width:100%;height:100%;max-width:760px;overflow:visible;filter:drop-shadow(0 0 5px rgba(255,236,200,.35))}
+.tile{cursor:pointer}
+.rot{transition:transform .3s cubic-bezier(.3,1.5,.5,1);transform-origin:0 0}
+.rot path{fill:var(--c);fill-opacity:0;stroke:var(--chalk);stroke-width:.062;stroke-linejoin:round;stroke-linecap:round;
+  stroke-opacity:.6;transition:stroke-opacity .3s,fill-opacity .9s ease var(--d,0s),stroke-width .5s}
+.tile.ok .rot path{stroke-opacity:1}
+.dot{fill:var(--chalk);transition:fill .8s ease var(--d,0s)}
+.hit{fill:transparent}
+.tile.hinted .rot path{stroke:var(--gold);stroke-opacity:1}
+.won .rot path{fill-opacity:.92;stroke-opacity:1;stroke-width:.07}
+.won .dot{fill:#fff}
+.won .tile{cursor:default}
+svg.kolam.won{animation:bloom 1.4s ease}
+@keyframes bloom{0%{filter:drop-shadow(0 0 5px rgba(255,236,200,.35))}40%{filter:drop-shadow(0 0 26px rgba(255,220,150,.95))}100%{filter:drop-shadow(0 0 9px rgba(255,236,200,.55))}}
+#foot{min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+#tip{color:var(--ink);font-size:1.02rem;max-width:30em}
+#winBox{display:none;flex-direction:column;align-items:center;gap:10px}
+#winBox.on{display:flex;animation:rise .6s ease .5s both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+#winBox .serif{font-size:1.5rem}
+
+/* levels + about */
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 2px 30px;max-width:720px;width:100%;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px}
+.grid button{padding:0;height:52px;border-radius:14px;font-size:1rem;position:relative}
+.grid button.done{background:rgba(246,185,59,.9);color:#4a1a0e;border-color:transparent;font-weight:600}
+.grid button.star::after{content:"✦";position:absolute;top:2px;right:6px;font-size:.62rem;opacity:.85}
+.tbg{fill:rgba(255,246,230,.05);stroke:rgba(255,246,230,.2);stroke-width:.3;transition:opacity .7s}
+.sc{transform:scale(.93);transition:transform .7s ease}
+.won .sc{transform:scale(1)}
+.won .tbg{opacity:0}
+.tile.hinted .tbg{stroke:var(--gold);stroke-width:.9;fill:rgba(246,185,59,.18)}
+#winNote{color:var(--ink);font-size:.95rem;max-width:32em;line-height:1.4;margin-top:-4px}
+details.chapd{margin:10px 0;border-radius:16px;background:rgba(0,0,0,.14);padding:4px 12px}
+details.chapd summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;padding:10px 0}
+details.chapd summary::-webkit-details-marker{display:none}
+details.chapd summary h2{font-size:1.3rem}
+details.chapd summary span{color:var(--ink);font-size:.85rem}
+details.chapd summary .cnt{margin-left:auto}
+details.chapd[open]{padding-bottom:14px}
+.grid button.pic::after{content:"❀";position:absolute;top:2px;right:5px;font-size:.66rem;opacity:.9}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{background:rgba(0,0,0,.16);border-radius:18px;padding:10px;text-align:center}
+.card svg{width:100%;display:block;cursor:pointer}
+.card b{display:block;margin:6px 0 8px;font-weight:500;font-size:1.05rem}
+.card .sz{display:flex;gap:4px;justify-content:center}
+.card .sz button{padding:6px 8px;font-size:.72rem}
+.lead{color:var(--ink);line-height:1.5;margin:10px 2px 16px}
+.about p{color:var(--ink);line-height:1.6;font-size:1.02rem}
+.about h2{margin-top:22px;font-size:1.4rem}
+</style>
+</head>
+<body>
+
+<section id="home" class="screen on">
+  <svg id="homeArt" class="kolam won"></svg>
+  <h1>Kolam</h1>
+  <div class="sub serif">Dots &amp; Loops · a rangoli puzzle</div>
+  <button class="primary" id="playBtn">Play</button>
+  <div class="row">
+    <button id="levelsBtn">All levels</button>
+    <button id="galBtn">Rangoli gallery</button>
+    <button id="aboutBtn">What is a kolam?</button>
+  </div>
+  <div class="free">Free forever · no ads · works offline</div>
+</section>
+
+<section id="game" class="screen">
+  <div class="bar">
+    <button id="backBtn" aria-label="Back to levels">‹ Levels</button>
+    <div class="mid"><b class="serif" id="lvTitle">Level 1</b><span id="lvChap">Bud</span></div>
+    <button id="hintBtn">Hint</button>
+    <button id="soundBtn" aria-label="Sound">♪</button>
+  </div>
+  <div id="boardWrap"><svg id="board" class="kolam"></svg></div>
+  <div id="foot">
+    <div id="tip"></div>
+    <div id="winBox"><div class="serif" id="winMsg">Beautiful!</div><div id="winNote"></div><button class="primary" id="nextBtn">Next kolam ›</button></div>
+  </div>
+</section>
+
+<section id="levels" class="screen">
+  <div class="bar"><button data-go="home">‹ Home</button><div class="mid"><b class="serif">Levels</b><span id="doneCount"></span></div><span style="width:70px"></span></div>
+  <div class="scroll" id="levelList"></div>
+</section>
+
+<section id="gallery" class="screen">
+  <div class="bar"><button data-go="home">‹ Home</button><div class="mid"><b class="serif">Rangoli gallery</b><span>pick a picture</span></div><span style="width:70px"></span></div>
+  <div class="scroll"><p class="lead">Each rangoli is cut into tiles and turned around. Tap the tiles to bring the picture back. Choose how many tiles you want.</p><div class="gal" id="galList"></div></div>
+</section>
+
+<section id="about" class="screen">
+  <div class="bar"><button data-go="home">‹ Home</button><div class="mid"><b class="serif">What is a kolam?</b></div><span style="width:70px"></span></div>
+  <div class="scroll about">
+    <p>A <b>kolam</b> is a pattern drawn on the ground at the doorstep of a home, traditionally by hand with rice flour, early in the morning. It is a daily art in South India, especially Tamil Nadu. Similar floor arts are known across India by other names: <b>rangoli</b>, <b>muggulu</b>, <b>rangavalli</b>, <b>alpona</b>.</p>
+    <h2>Dots and loops</h2>
+    <p>One family of kolam starts with a grid of dots, called <b>pulli</b>. In a <b>sikku kolam</b> ("knot" kolam) the line never touches a dot. It curls around the dots, crosses itself, and comes back to where it began, like a ribbon with no end.</p>
+    <h2>How to play</h2>
+    <p>Every dot holds one piece of the line. <b>Tap a piece to turn it.</b> When every strand meets a strand from its neighbour, and no strand is left pointing at nothing, the kolam is complete and fills with colour.</p>
+    <p>The early levels have just a few dots. The later ones are large and intricate. Levels marked ✦ are classic shapes: full diamonds, woven squares and nested rings.</p>
+    <h2>Rangoli pictures</h2>
+    <p>Rangoli is also made with coloured powder and flower petals: lotuses, peacocks, lamps for Diwali, flower carpets for Onam. Levels marked ❀ are pictures like these, cut into tiles. <b>Tap a tile to turn it</b> until the picture comes back. You can find them all in the Rangoli gallery.</p>
+    <h2>Try it on paper</h2>
+    <p>Draw the dots first, then copy the finished line around them without lifting your pencil. Symmetry is the secret: whatever you draw on one side, mirror on the other.</p>
+  </div>
+</section>
+
+<script src="motifs.js"></script>
+<script>
+'use strict';
+/* ---------- storage ---------- */
+const store={done:[],sound:true};
+try{Object.assign(store,JSON.parse(localStorage.getItem('kolam.v1')||'{}'))}catch(e){}
+const save=()=>{try{localStorage.setItem('kolam.v1',JSON.stringify(store))}catch(e){}};
+const doneSet=new Set(store.done);
+
+/* ---------- chapters ---------- */
+const CHAPTERS=[
+  {name:'Bud',from:1,to:20,note:'a few dots',g:['#8a3420','#541c10']},
+  {name:'Blossom',from:21,to:50,note:'small kolams',g:['#274079','#141f45']},
+  {name:'Lotus',from:51,to:90,note:'five and six dots wide',g:['#1c5a4c','#0d3029']},
+  {name:'Lamp',from:91,to:140,note:'bigger weaves',g:['#6a2a63','#341232']},
+  {name:'Festival',from:141,to:200,note:'grand designs',g:['#7a2b3b','#3a101b']},
+  {name:'Peacock',from:201,to:400,note:'seven to nine dots wide',g:['#15506b','#0a2a3a']},
+  {name:'Temple',from:401,to:700,note:'eight to ten dots wide',g:['#7a4a1c','#3d230b']},
+  {name:'Monsoon',from:701,to:1000,note:'wide, flowing weaves',g:['#2b4a6e','#12233a']},
+  {name:'Harvest',from:1001,to:1400,note:'for patient hands',g:['#5c5a1e','#2c2b0c']},
+  {name:'Starlight',from:1401,to:2000,note:'the most intricate',g:['#3a2a66','#1a1233']},
+  {name:'Endless',from:2001,to:Infinity,note:'new kolams forever',g:['#2c3140','#14161d']}
+];
+const chapterOf=L=>CHAPTERS.find(c=>L>=c.from&&L<=c.to);
+const PAL=['#f6a400','#e8457a','#17a69b','#8a55c9','#f26b21','#4caf50','#e53935','#2f8fe0'];
+
+/* ---------- level generation ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const I=[1,0,0,1];
+const OPS={
+  D4:[I,[0,-1,1,0],[-1,0,0,-1],[0,1,-1,0],[-1,0,0,1],[1,0,0,-1],[0,1,1,0],[0,-1,-1,0]],
+  C4:[I,[0,-1,1,0],[-1,0,0,-1],[0,1,-1,0]],
+  D2:[I,[-1,0,0,1],[1,0,0,-1],[-1,0,0,-1]],
+  C2:[I,[-1,0,0,-1]],
+  M:[I,[-1,0,0,1]]
+};
+const FEATURED=[['diamond',3,'all'],['square',3,'all'],['diamond',5,'all'],['square',4,'rings'],['square',5,'spokes'],
+  ['octagon',5,'all'],['diamond',7,'all'],['square',6,'rings'],['square',5,'all'],['diamond',9,'all'],
+  ['square',7,'spokes'],['octagon',7,'all'],['square',7,'rings'],['diamond',11,'all'],['square',8,'rings'],
+  ['square',9,'spokes'],['octagon',9,'all'],['square',8,'all'],['square',9,'rings'],['diamond',11,'all']];
+
+function spec(L,rng){
+  const pick=a=>a[Math.floor(rng()*a.length)];
+  if(L===1)return{w:2,h:1,shape:'square',rule:'all'};
+  if(L===2)return{w:3,h:1,shape:'square',rule:'all'};
+  if(L===3)return{w:2,h:2,shape:'square',rule:'all'};
+  if(L%10===0){
+    const k=L/10-1,f=k<FEATURED.length?FEATURED[k]:FEATURED[14+k%6];
+    return{w:f[1],h:f[1],shape:f[0],rule:f[2],star:true};
+  }
+  if(L<=9){const d=pick([[3,2],[2,3],[4,1],[2,2],[4,2],[3,2]]);return{w:d[0],h:d[1],shape:'square',p:.6}}
+  if(L<=20){const d=pick([[3,3,'square'],[3,3,'diamond'],[4,2,'square'],[4,3,'square'],[3,4,'square'],[3,3,'square']]);
+    return{w:d[0],h:d[1],shape:d[2],p:.62}}
+  const ch=chapterOf(L);
+  const R={Blossom:[4,5],Lotus:[5,6],Lamp:[6,7],Festival:[8,9],Peacock:[7,9],Temple:[8,10],Monsoon:[8,11],Harvest:[9,11],Starlight:[9,11],Endless:[9,11]}[ch.name];
+  const t=ch.to===Infinity?.5:(L-ch.from)/(ch.to-ch.from);
+  let n=R[0]+Math.min(R[1]-R[0],Math.floor((rng()*.8+t*.6)*(R[1]-R[0]+1)));
+  const shapes=['square','square'];
+  if(n>=5)shapes.push('octagon','ring','diamond');
+  if(n>=6)shapes.push('cross');
+  let shape=pick(shapes);
+  if(shape==='diamond')n=Math.min(11,(n%2?n:n+1)+2);
+  return{w:n,h:n,shape,p:.55+rng()*.25};
+}
+
+function inShape(shape,x,y,w,h){
+  const X=Math.abs(2*x-(w-1))/2,Y=Math.abs(2*y-(h-1))/2,c=(w-1)/2,n=w;
+  switch(shape){
+    case'diamond':return X+Y<=c+.01;
+    case'octagon':return X+Y<=c+Math.floor(c/2)+.01;
+    case'cross':return Math.min(X,Y)<=n/4-.5+.01;
+    case'ring':return Math.max(X,Y)>=n/6;
+    default:return true;
+  }
+}
+
+function build(sp,rng,strict){
+  const{w,h}=sp,cells=new Map(),id=(x,y)=>y*w+x;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(inShape(sp.shape,x,y,w,h))cells.set(id(x,y),{x,y,mask:0,rot:0});
+  const ekey=(a,b)=>Math.min(a,b)+'_'+Math.max(a,b);
+  const edges=[];
+  for(const[i,c]of cells){
+    if(c.x+1<w&&cells.has(i+1))edges.push([i,i+1]);
+    if(c.y+1<h&&cells.has(i+w))edges.push([i,i+w]);
+  }
+  const groups=w===h?['D4','D4','C4','D2','D2','M']:['D2','D2','M','C2'];
+  const ops=OPS[groups[Math.floor(rng()*groups.length)]];
+  const tf=(i,o)=>{const c=cells.get(i),X=2*c.x-(w-1),Y=2*c.y-(h-1);
+    return id((o[0]*X+o[1]*Y+(w-1))/2,(o[2]*X+o[3]*Y+(h-1))/2)};
+  const orbitOf=new Map(),orbits=[];
+  for(const[a,b]of edges){
+    if(orbitOf.has(ekey(a,b)))continue;
+    const o={keys:new Set(),on:false};
+    for(const op of ops){const k=ekey(tf(a,op),tf(b,op));o.keys.add(k);orbitOf.set(k,o)}
+    orbits.push(o);
+  }
+  const cheb=i=>{const c=cells.get(i);return Math.max(Math.abs(2*c.x-(w-1)),Math.abs(2*c.y-(h-1)))};
+  const onAxis=i=>{const c=cells.get(i);return 2*c.x===w-1||2*c.y===h-1};
+  const on=new Set();
+  if(sp.rule){
+    for(const[a,b]of edges){
+      if(sp.rule==='all'||cheb(a)===cheb(b)||(sp.rule==='spokes'&&onAxis(a)&&onAxis(b)&&(cells.get(a).x===cells.get(b).x?2*cells.get(a).x===w-1:2*cells.get(a).y===h-1)))on.add(ekey(a,b));
+    }
+  }else{
+    for(const o of orbits)o.on=rng()<sp.p;
+    const deg=new Map();
+    const recount=()=>{deg.clear();for(const[a,b]of edges)if(orbitOf.get(ekey(a,b)).on){deg.set(a,(deg.get(a)||0)+1);deg.set(b,(deg.get(b)||0)+1)}};
+    for(let guard=0;guard<200;guard++){
+      recount();
+      const lonely=edges.filter(([a,b])=>!deg.get(a)||!deg.get(b));
+      if(!lonely.length)break;
+      const e=lonely[Math.floor(rng()*lonely.length)];orbitOf.get(ekey(e[0],e[1])).on=true;
+    }
+    if(strict&&orbits.length>1&&orbits.every(o=>o.on))return null;
+    for(const[a,b]of edges)if(orbitOf.get(ekey(a,b)).on)on.add(ekey(a,b));
+  }
+  const manh=sp.shape==='diamond'||(!sp.rule&&rng()<.35),off=Math.floor(rng()*PAL.length);
+  let turnable=0;
+  for(const[i,c]of cells){
+    const nb=[i-w,c.x+1<w?i+1:-1,i+w,c.x>0?i-1:-1];
+    nb.forEach((j,d)=>{if(j>=0&&cells.has(j)&&on.has(ekey(i,j)))c.mask|=1<<d});
+    const m=c.mask,bits=(m&1)+(m>>1&1)+(m>>2&1)+(m>>3&1);
+    c.sym=bits===0||bits===4?1:(m===5||m===10?2:4);
+    if(c.sym>1)turnable++;
+    const X=Math.abs(2*c.x-(w-1)),Y=Math.abs(2*c.y-(h-1));
+    c.ring=Math.round((manh?X+Y:Math.max(X,Y))/2);
+    c.color=PAL[(c.ring+off)%PAL.length];
+  }
+  if(turnable<1)return null;
+  return{w,h,cells,star:!!sp.star,id};
+}
+
+function conn(c,d){return c.mask>>(((d-c.rot)%4+4)%4)&1}
+const DX=[0,1,0,-1],DY=[-1,0,1,0];
+function neighbour(lv,c,d){const x=c.x+DX[d],y=c.y+DY[d];if(x<0||y<0||x>=lv.w||y>=lv.h)return null;return lv.cells.get(lv.id(x,y))||null}
+function tileOk(lv,c){for(let d=0;d<4;d++){const n=neighbour(lv,c,d),a=conn(c,d);if(n?a!==conn(n,(d+2)%4):a)return false}return true}
+function solved(lv){if(lv.kind==='pic')return lv.tiles.every(c=>c.rot%c.sym===0);for(const c of lv.cells.values())if(!tileOk(lv,c))return false;return true}
+
+function generate(L){
+  for(let attempt=0;;attempt++){
+    const rng=mulberry32(L*7919+attempt*104729+17);
+    const lv=build(spec(L,rng),rng,attempt<6);
+    if(!lv)continue;
+    const turn=[...lv.cells.values()].filter(c=>c.sym>1);
+    for(let tries=0;tries<50;tries++){
+      for(const c of turn)c.rot=Math.floor(rng()*4);
+      if(!solved(lv)&&turn.filter(c=>c.rot%c.sym).length>=Math.min(2,turn.length))break;
+    }
+    if(solved(lv))turn[0].rot=1;
+    lv.n=L;lv.kind='kolam';lv.tiles=[...lv.cells.values()];return lv;
+  }
+}
+
+/* ---------- drawing ---------- */
+const NS='http://www.w3.org/2000/svg';
+function tilePath(mask){
+  const a=.25,r=.35355,cs=[[-a,-a],[a,-a],[a,a],[-a,a]],ms=[[0,-.5],[.5,0],[0,.5],[-.5,0]];
+  let d='M'+cs[0];
+  for(let s=0;s<4;s++){const c=cs[(s+1)%4];d+=mask>>s&1?`L${ms[s]}L${c}`:`A${r} ${r} 0 0 1 ${c}`}
+  return d+'Z';
+}
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e}
+function draw(lv,svg,onTap){
+  svg.innerHTML='';
+  svg.setAttribute('viewBox',`-0.8 -0.8 ${lv.w+.6} ${lv.h+.6}`);
+  for(const c of lv.cells.values()){
+    const g=el('g',{class:'tile',transform:`translate(${c.x},${c.y})`},svg);
+    g.style.setProperty('--c',c.color);g.style.setProperty('--d',(c.ring*.09)+'s');
+    const r=el('g',{class:'rot'},g);r.style.transform=`rotate(${c.rot*90}deg)`;
+    el('path',{d:tilePath(c.mask)},r);
+    el('circle',{class:'dot',r:.055},g);
+    el('rect',{class:'hit',x:-.5,y:-.5,width:1,height:1},g);
+    c.g=g;c.r=r;
+    if(onTap)g.addEventListener('pointerdown',e=>{e.preventDefault();onTap(c)});
+  }
+}
+
+/* ---------- picture (rangoli) levels ---------- */
+const isPic=L=>L%10===5;
+const picSize=L=>L<=20?2:L<=50?3:L<=140?4:L<=400?5:(L%20===5?5:6);
+function tileSyms(art,n){return new Promise(res=>{
+  const T=28,S=n*T,img=new Image();let finished=false;
+  const end=v=>{if(!finished){finished=true;res(v)}},fail=()=>end(Array(n*n).fill(4));
+  img.onload=()=>{try{
+    const cv=document.createElement('canvas');cv.width=cv.height=S;
+    const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0,S,S);
+    const out=[];
+    for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+      const d=cx.getImageData(x*T,y*T,T,T).data;
+      const diff=k=>{let s=0;for(let j=0;j<T;j++)for(let i=0;i<T;i++){
+        const i2=k===1?T-1-j:T-1-i,j2=k===1?i:T-1-j,a=(j*T+i)*4,b=(j2*T+i2)*4;
+        for(let c=0;c<4;c++)s+=Math.abs(d[a+c]-d[b+c])}return s/(T*T*4*255)};
+      out.push(diff(1)<.006?1:diff(2)<.006?2:4);
+    }
+    end(out)}catch(e){fail()}};
+  img.onerror=fail;setTimeout(fail,2000);
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 100 100">${art}</svg>`);
+})}
+async function makePic(mi,n,seed){
+  const m=MOTIFS[mi],rng=mulberry32(seed*2654435761+n),art=m.draw(rng);
+  const syms=await tileSyms(art,n),tiles=[];
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++)tiles.push({x,y,rot:0,sym:syms[y*n+x]});
+  const turn=tiles.filter(c=>c.sym>1);
+  for(let tries=0;tries<50;tries++){
+    for(const c of turn)c.rot=Math.floor(rng()*4);
+    if(turn.filter(c=>c.rot%c.sym).length>=Math.min(turn.length,Math.max(2,turn.length*.6)))break;
+  }
+  if(turn.length&&turn.every(c=>c.rot%c.sym===0))turn[0].rot=1;
+  return{kind:'pic',size:n,tiles,art,motif:m,mi};
+}
+function drawPic(lv,svg,onTap){
+  svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
+  const n=lv.size,s=100/n,aid='art-'+svg.id;
+  const defs=el('defs',{},svg);defs.innerHTML=`<g id="${aid}">${lv.art}</g>`;
+  for(const c of lv.tiles){
+    const g=el('g',{class:'tile',transform:`translate(${(c.x+.5)*s},${(c.y+.5)*s})`},svg);
+    const r=el('g',{class:'rot'},g);r.style.transform=`rotate(${c.rot*90}deg)`;
+    const sc=el('g',{class:'sc'},r);
+    el('rect',{class:'tbg',x:-s/2,y:-s/2,width:s,height:s,rx:s*.06},sc);
+    const inner=el('svg',{x:-s/2,y:-s/2,width:s,height:s,viewBox:`${c.x*s} ${c.y*s} ${s} ${s}`},sc);
+    el('use',{href:'#'+aid},inner);
+    el('rect',{class:'hit',x:-s/2,y:-s/2,width:s,height:s},g);
+    c.g=g;c.r=r;
+    if(onTap)g.addEventListener('pointerdown',e=>{e.preventDefault();onTap(c)});
+  }
+}
+
+/* ---------- sound ---------- */
+let ac;
+const SCALE=[0,2,4,7,9,12,14,16,19,21,24];
+function note(semi,when,dur,vol){
+  if(!store.sound)return;
+  try{
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended')ac.resume();
+    const t=ac.currentTime+when,o=ac.createOscillator(),g=ac.createGain();
+    o.type='sine';o.frequency.value=261.63*Math.pow(2,semi/12);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur+.05);
+  }catch(e){}
+}
+
+/* ---------- game ---------- */
+const $=id=>document.getElementById(id);
+const board=$('board');
+let cur=null,won=false;
+const TIPS={1:'Tap a piece to turn it.',2:'Make every line meet its neighbour.',3:'Close the loop around the dots.',4:'No line should point at nothing.',10:'✦ A classic shape. Find the symmetry.'};
+const PRAISE=['Beautiful!','Lovely!','So pretty!','Wonderful!','Well done!','Perfect!'];
+
+function show(name){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===name));
+  if(name==='levels')renderLevels();if(name==='gallery')renderGallery();
+  if(name!=='game'){setTheme(CHAPTERS[0]);history.replaceState(null,'',location.pathname)}}
+function setTheme(ch){document.body.style.setProperty('--g1',ch.g[0]);document.body.style.setProperty('--g2',ch.g[1]);
+  document.querySelector('meta[name=theme-color]').content=ch.g[1]}
+
+function refresh(){if(cur.kind==='kolam')for(const c of cur.cells.values())c.g.classList.toggle('ok',tileOk(cur,c))}
+let loadToken=0;
+function begin(lv){
+  cur=lv;won=false;
+  const L=lv.n,ch=L?chapterOf(L):CHAPTERS[0];setTheme(ch);
+  const pic=lv.kind==='pic';
+  $('lvTitle').textContent=L?'Level '+L+(lv.star?' ✦':pic?' ❀':''):lv.motif.name;
+  $('lvChap').textContent=L?ch.name:'Rangoli gallery · '+lv.size+'×'+lv.size;
+  $('backBtn').textContent=L?'‹ Levels':'‹ Gallery';
+  $('tip').textContent=pic?(L===5?'A rangoli picture! Tap the tiles to turn them back.':lv.motif.name+' · turn the tiles to bring it back.'):(TIPS[L]||(lv.star?'✦ A classic shape.':''));
+  $('tip').style.display='';
+  $('winBox').classList.remove('on');board.classList.remove('won');$('hintBtn').disabled=false;
+  $('nextBtn').textContent=L?'Next ›':'Next rangoli ›';
+  if(pic)drawPic(lv,board,tap);else draw(lv,board,tap);
+  refresh();show('game');
+  history.replaceState(null,'',L?'#'+L:'#g-'+lv.motif.id+'-'+lv.size);
+}
+function load(L){
+  const tk=++loadToken;
+  if(isPic(L)){const k=(L-5)/10;makePic(k%MOTIFS.length,picSize(L),L).then(lv=>{if(tk!==loadToken)return;lv.n=L;begin(lv)})}
+  else begin(generate(L));
+}
+function loadGallery(mi,n){const tk=++loadToken;makePic(mi,n,1000+mi).then(lv=>{if(tk===loadToken)begin(lv)})}
+function tap(c){
+  if(won)return;
+  if(c.sym===1){note(SCALE[(c.x+c.y)%6]-12,0,.15,.05);return}
+  c.rot++;c.r.style.transform=`rotate(${c.rot*90}deg)`;
+  note(SCALE[(c.x+c.y*2)%SCALE.length],0,.5,.11);
+  refresh();
+  if(solved(cur))win();
+}
+function win(){
+  won=true;if(cur.n){doneSet.add(cur.n);store.done=[...doneSet];save()}
+  $('hintBtn').disabled=true;
+  setTimeout(()=>{
+    board.classList.add('won');
+    [0,2,4,7,9,12].forEach((s,i)=>note(s,i*.11,1.4,.09));note(12,.75,2.2,.07);note(16,.75,2.2,.05);
+    $('tip').style.display='none';$('winMsg').textContent=PRAISE[((cur.n||cur.mi)+cur.tiles.length)%PRAISE.length];$('winNote').textContent=cur.kind==='pic'?cur.motif.note:'';$('winBox').classList.add('on');
+  },330);
+}
+function hint(){
+  if(won||!cur)return;
+  const wrong=cur.tiles.filter(c=>c.rot%c.sym);
+  if(!wrong.length)return;
+  const c=wrong[Math.floor(Math.random()*wrong.length)];
+  c.rot+=c.sym-c.rot%c.sym;c.r.style.transform=`rotate(${c.rot*90}deg)`;
+  c.g.classList.add('hinted');setTimeout(()=>c.g.classList.remove('hinted'),1400);
+  note(7,0,.6,.1);refresh();if(solved(cur))win();
+}
+function nextUndone(){let L=1;while(doneSet.has(L))L++;return L}
+
+/* ---------- level list ---------- */
+function renderLevels(){
+  const list=$('levelList');list.innerHTML='';
+  const nxt=nextUndone(),top=Math.max(2000,Math.ceil((Math.max(0,...doneSet)+1)/100)*100+100);
+  for(const ch of CHAPTERS){
+    const to=Math.min(ch.to,top);if(ch.from>to)continue;
+    let cnt=0;for(const L of doneSet)if(L>=ch.from&&L<=to)cnt++;
+    const d=document.createElement('details');d.className='chapd';
+    d.innerHTML=`<summary><h2>${ch.name}</h2><span>${ch.from}–${ch.to===Infinity?'∞':ch.to} · ${ch.note}</span><span class="cnt">${cnt}/${to-ch.from+1}</span></summary>`;
+    const fill=()=>{
+      if(d.dataset.built)return;d.dataset.built=1;
+      const grid=document.createElement('div');grid.className='grid';
+      for(let L=ch.from;L<=to;L++){
+        const b=document.createElement('button');b.textContent=L;
+        if(doneSet.has(L))b.classList.add('done');
+        if(L%10===0)b.classList.add('star');else if(isPic(L))b.classList.add('pic');
+        b.onclick=()=>load(L);grid.appendChild(b);
+      }
+      d.appendChild(grid);
+    };
+    d.addEventListener('toggle',()=>{if(d.open)fill()});
+    if(nxt>=ch.from&&nxt<=ch.to){d.open=true;fill()}
+    list.appendChild(d);
+  }
+  $('doneCount').textContent=doneSet.size+' completed';
+}
+function renderGallery(){
+  const g=$('galList');if(g.children.length)return;
+  MOTIFS.forEach((m,i)=>{
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<svg viewBox="-2 -2 104 104">${m.draw(mulberry32((1000+i)*2654435761+4))}</svg><b class="serif">${m.name}</b><div class="sz"></div>`;
+    c.querySelector('svg').onclick=()=>loadGallery(i,4);
+    [['Easy',3],['Medium',4],['Hard',6]].forEach(([t,n])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>loadGallery(i,n);c.querySelector('.sz').appendChild(b)});
+    g.appendChild(c);
+  });
+}
+
+/* ---------- wiring ---------- */
+$('playBtn').onclick=()=>load(nextUndone());
+$('levelsBtn').onclick=()=>show('levels');
+$('aboutBtn').onclick=()=>show('about');
+$('backBtn').onclick=()=>show(cur&&!cur.n?'gallery':'levels');
+$('galBtn').onclick=()=>show('gallery');
+$('nextBtn').onclick=()=>cur.n?load(cur.n+1):loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
+$('hintBtn').onclick=hint;
+const soundUI=()=>{$('soundBtn').style.opacity=store.sound?1:.45;$('soundBtn').textContent=store.sound?'♪':'♪̸'};
+$('soundBtn').onclick=()=>{store.sound=!store.sound;save();soundUI();note(7,0,.4,.1)};soundUI();
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
+
+(function homeArt(){
+  const rng=mulberry32(5),lv=build({w:7,h:7,shape:'diamond',rule:'all'},rng);
+  draw(lv,$('homeArt'),null);
+})();
+(function deepLink(){
+  const h=location.hash.slice(1),g=h.match(/^g-([a-z]+)-(\d)$/);
+  if(g){const mi=MOTIFS.findIndex(m=>m.id===g[1]);if(mi>=0)return loadGallery(mi,Math.min(6,Math.max(2,+g[2])))}
+  const L=parseInt(h,10);if(L>0)load(L);
+})();
+if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
