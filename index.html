@@ -98,6 +98,11 @@ details.chapd[open]{padding-bottom:14px}
 .card .sz{display:flex;gap:4px;justify-content:center}
 .card .sz button{padding:6px 8px;font-size:.72rem}
 .lead{color:var(--ink);line-height:1.5;margin:10px 2px 16px}
+.sep{fill:none;stroke:rgba(255,246,230,.55);stroke-width:.35;stroke-dasharray:.6 1.2;transition:opacity .7s;pointer-events:none}
+.won .sep{opacity:0}
+.tile.hinted .sep{stroke:var(--gold);stroke-width:1.1;stroke-dasharray:none}
+.grid button.man::after{content:"✺";position:absolute;top:2px;right:5px;font-size:.66rem;opacity:.9}
+.galh{margin:26px 2px 4px;font-size:1.35rem}
 .about p{color:var(--ink);line-height:1.6;font-size:1.02rem}
 .about h2{margin-top:22px;font-size:1.4rem}
 </style>
@@ -138,7 +143,7 @@ details.chapd[open]{padding-bottom:14px}
 
 <section id="gallery" class="screen">
   <div class="bar"><button data-go="home">‹ Home</button><div class="mid"><b class="serif">Rangoli gallery</b><span>pick a picture</span></div><span style="width:70px"></span></div>
-  <div class="scroll"><p class="lead">Each rangoli is cut into tiles and turned around. Tap the tiles to bring the picture back. Choose how many tiles you want.</p><div class="gal" id="galList"></div></div>
+  <div class="scroll"><p class="lead">Each rangoli is cut into tiles and turned around. Tap the tiles to bring the picture back. Choose how many tiles you want.</p><div class="gal" id="galList"></div><h2 class="galh">Rangavalli mandalas</h2><p class="lead">Round designs that repeat around the centre. Tap a ring to turn it until the petals line up.</p><div class="gal" id="manList"></div></div>
 </section>
 
 <section id="about" class="screen">
@@ -152,6 +157,8 @@ details.chapd[open]{padding-bottom:14px}
     <p>The early levels have just a few dots. The later ones are large and intricate. Levels marked ✦ are classic shapes: full diamonds, woven squares and nested rings.</p>
     <h2>Rangoli pictures</h2>
     <p>Rangoli is also made with coloured powder and flower petals: lotuses, peacocks, lamps for Diwali, flower carpets for Onam. Levels marked ❀ are pictures like these, cut into tiles. <b>Tap a tile to turn it</b> until the picture comes back. You can find them all in the Rangoli gallery.</p>
+    <h2>Rangavalli mandalas</h2>
+    <p>The word <b>rangavalli</b> comes from Sanskrit: <i>ranga</i> means colour, and <i>āvali</i> means a row or line, the same ending as in Deepavali, "a row of lamps". Some read it as <i>valli</i>, a creeper, for the vine-like lines. Many rangavalli are round, with one petal repeated six, eight or twelve times around the centre. Levels marked ✺ are mandalas like these, made of rings. <b>Tap a ring to turn it</b> until the petals line up all the way round.</p>
     <h2>Try it on paper</h2>
     <p>Draw the dots first, then copy the finished line around them without lifting your pencil. Symmetry is the secret: whatever you draw on one side, mirror on the other.</p>
   </div>
@@ -293,7 +300,8 @@ function conn(c,d){return c.mask>>(((d-c.rot)%4+4)%4)&1}
 const DX=[0,1,0,-1],DY=[-1,0,1,0];
 function neighbour(lv,c,d){const x=c.x+DX[d],y=c.y+DY[d];if(x<0||y<0||x>=lv.w||y>=lv.h)return null;return lv.cells.get(lv.id(x,y))||null}
 function tileOk(lv,c){for(let d=0;d<4;d++){const n=neighbour(lv,c,d),a=conn(c,d);if(n?a!==conn(n,(d+2)%4):a)return false}return true}
-function solved(lv){if(lv.kind==='pic')return lv.tiles.every(c=>c.rot%c.sym===0);for(const c of lv.cells.values())if(!tileOk(lv,c))return false;return true}
+const off=(lv,c)=>lv.kind==='man'?(((c.rot-lv.tiles[lv.tiles.length-1].rot)%c.sym)+c.sym)%c.sym:c.rot%c.sym;
+function solved(lv){if(lv.kind!=='kolam')return lv.tiles.every(c=>off(lv,c)===0);for(const c of lv.cells.values())if(!tileOk(lv,c))return false;return true}
 
 function generate(L){
   for(let attempt=0;;attempt++){
@@ -365,7 +373,7 @@ async function makePic(mi,n,seed){
     if(turn.filter(c=>c.rot%c.sym).length>=Math.min(turn.length,Math.max(2,turn.length*.6)))break;
   }
   if(turn.length&&turn.every(c=>c.rot%c.sym===0))turn[0].rot=1;
-  return{kind:'pic',size:n,tiles,art,motif:m,mi};
+  return{kind:'pic',size:n,tiles,art,motif:m,mi,title:m.name,sub:n+'×'+n,note:m.note,link:'g-'+m.id+'-'+n};
 }
 function drawPic(lv,svg,onTap){
   svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
@@ -379,6 +387,40 @@ function drawPic(lv,svg,onTap){
     const inner=el('svg',{x:-s/2,y:-s/2,width:s,height:s,viewBox:`${c.x*s} ${c.y*s} ${s} ${s}`},sc);
     el('use',{href:'#'+aid},inner);
     el('rect',{class:'hit',x:-s/2,y:-s/2,width:s,height:s},g);
+    c.g=g;c.r=r;
+    if(onTap)g.addEventListener('pointerdown',e=>{e.preventDefault();onTap(c)});
+  }
+}
+
+/* ---------- mandala (rangavalli) levels ---------- */
+const isMan=L=>L%10===8;
+const FOLDS=[5,6,7,8,9,10,12,16];
+function makeMandala(n,k,S,seed){
+  const rng=mulberry32(seed*40503+n*131+k),art=mandalaArt(n,k,rng),tiles=[];
+  for(let i=0;i<k;i++)tiles.push({i,x:i,y:0,rot:0,sym:S,step:360/(n*S)});
+  const lv={kind:'man',tiles,art,fold:n,title:n+'-fold mandala',sub:k+' rings',link:'m-'+n+'-'+k,
+    note:`This rangavalli has ${n}-fold symmetry: the same petal repeats ${n} times around the centre.`};
+  for(let tries=0;tries<60;tries++){
+    for(const c of tiles)c.rot=Math.floor(rng()*S);
+    if(tiles.filter(c=>off(lv,c)).length>=Math.max(1,Math.ceil((k-1)*.6)))break;
+  }
+  if(solved(lv))tiles[0].rot++;
+  return lv;
+}
+function drawMandala(lv,svg,onTap){
+  svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
+  const k=lv.tiles.length,aid='art-'+svg.id,circ=r=>`M50 ${50-r}A${r} ${r} 0 1 1 49.99 ${50-r}Z`;
+  const defs=el('defs',{},svg);let dh=`<g id="${aid}">${lv.art}</g>`;
+  const band=i=>(i?circ(46*i/k):'')+circ(i===k-1?52:46*(i+1)/k);
+  lv.tiles.forEach(c=>dh+=`<clipPath id="${aid}-c${c.i}"><path clip-rule="evenodd" d="${band(c.i)}"/></clipPath>`);
+  defs.innerHTML=dh;
+  for(const c of lv.tiles){
+    const g=el('g',{class:'tile'},svg);
+    const r=el('g',{class:'rot'},g);r.style.transformOrigin='50px 50px';r.style.transition='transform .4s ease';
+    r.style.transform=`rotate(${c.rot*c.step}deg)`;
+    const cl=el('g',{'clip-path':`url(#${aid}-c${c.i})`},r);el('use',{href:'#'+aid},cl);
+    if(c.i<k-1)el('circle',{class:'sep',cx:50,cy:50,r:46*(c.i+1)/k},g);
+    el('path',{class:'hit','fill-rule':'evenodd',d:band(c.i)},g);
     c.g=g;c.r=r;
     if(onTap)g.addEventListener('pointerdown',e=>{e.preventDefault();onTap(c)});
   }
@@ -417,28 +459,33 @@ let loadToken=0;
 function begin(lv){
   cur=lv;won=false;
   const L=lv.n,ch=L?chapterOf(L):CHAPTERS[0];setTheme(ch);
-  const pic=lv.kind==='pic';
-  $('lvTitle').textContent=L?'Level '+L+(lv.star?' ✦':pic?' ❀':''):lv.motif.name;
-  $('lvChap').textContent=L?ch.name:'Rangoli gallery · '+lv.size+'×'+lv.size;
+  const k=lv.kind;
+  $('lvTitle').textContent=L?'Level '+L+(lv.star?' ✦':k==='pic'?' ❀':k==='man'?' ✺':''):lv.title;
+  $('lvChap').textContent=L?ch.name:'Gallery · '+lv.sub;
   $('backBtn').textContent=L?'‹ Levels':'‹ Gallery';
-  $('tip').textContent=pic?(L===5?'A rangoli picture! Tap the tiles to turn them back.':lv.motif.name+' · turn the tiles to bring it back.'):(TIPS[L]||(lv.star?'✦ A classic shape.':''));
+  $('tip').textContent=k==='pic'?(L===5?'A rangoli picture! Tap the tiles to turn them back.':lv.title+' · turn the tiles to bring it back.'):
+    k==='man'?(L===8?'A mandala! Tap a ring to turn it. Line up the petals.':'Tap a ring to turn it. Line up the petals.'):(TIPS[L]||(lv.star?'✦ A classic shape.':''));
   $('tip').style.display='';
   $('winBox').classList.remove('on');board.classList.remove('won');$('hintBtn').disabled=false;
-  $('nextBtn').textContent=L?'Next ›':'Next rangoli ›';
-  if(pic)drawPic(lv,board,tap);else draw(lv,board,tap);
+  $('nextBtn').textContent=L?'Next ›':'Next ›';
+  (k==='pic'?drawPic:k==='man'?drawMandala:draw)(lv,board,tap);
   refresh();show('game');
-  history.replaceState(null,'',L?'#'+L:'#g-'+lv.motif.id+'-'+lv.size);
+  history.replaceState(null,'','#'+(L||lv.link));
 }
 function load(L){
   const tk=++loadToken;
   if(isPic(L)){const k=(L-5)/10;makePic(k%MOTIFS.length,picSize(L),L).then(lv=>{if(tk!==loadToken)return;lv.n=L;begin(lv)})}
+  else if(isMan(L)){
+    const rings=L<=20?2:L<=50?3:L<=140?4:L<=400?5:(L%20===8?5:6),j=(L-8)/10;
+    const lv=makeMandala([6,8,5,12,10,7,16,9][j%8],rings,L<=140?3:4,L);lv.n=L;begin(lv)}
   else begin(generate(L));
 }
 function loadGallery(mi,n){const tk=++loadToken;makePic(mi,n,1000+mi).then(lv=>{if(tk===loadToken)begin(lv)})}
+function loadMandala(n,k){++loadToken;begin(makeMandala(n,k,k>=5?4:3,500+n))}
 function tap(c){
   if(won)return;
   if(c.sym===1){note(SCALE[(c.x+c.y)%6]-12,0,.15,.05);return}
-  c.rot++;c.r.style.transform=`rotate(${c.rot*90}deg)`;
+  c.rot++;c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
   note(SCALE[(c.x+c.y*2)%SCALE.length],0,.5,.11);
   refresh();
   if(solved(cur))win();
@@ -449,15 +496,15 @@ function win(){
   setTimeout(()=>{
     board.classList.add('won');
     [0,2,4,7,9,12].forEach((s,i)=>note(s,i*.11,1.4,.09));note(12,.75,2.2,.07);note(16,.75,2.2,.05);
-    $('tip').style.display='none';$('winMsg').textContent=PRAISE[((cur.n||cur.mi)+cur.tiles.length)%PRAISE.length];$('winNote').textContent=cur.kind==='pic'?cur.motif.note:'';$('winBox').classList.add('on');
+    $('tip').style.display='none';$('winMsg').textContent=PRAISE[((cur.n||0)+cur.tiles.length)%PRAISE.length];$('winNote').textContent=cur.note||'';$('winBox').classList.add('on');
   },330);
 }
 function hint(){
   if(won||!cur)return;
-  const wrong=cur.tiles.filter(c=>c.rot%c.sym);
+  const wrong=cur.tiles.filter(c=>off(cur,c));
   if(!wrong.length)return;
   const c=wrong[Math.floor(Math.random()*wrong.length)];
-  c.rot+=c.sym-c.rot%c.sym;c.r.style.transform=`rotate(${c.rot*90}deg)`;
+  c.rot+=c.sym-off(cur,c);c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
   c.g.classList.add('hinted');setTimeout(()=>c.g.classList.remove('hinted'),1400);
   note(7,0,.6,.1);refresh();if(solved(cur))win();
 }
@@ -478,7 +525,7 @@ function renderLevels(){
       for(let L=ch.from;L<=to;L++){
         const b=document.createElement('button');b.textContent=L;
         if(doneSet.has(L))b.classList.add('done');
-        if(L%10===0)b.classList.add('star');else if(isPic(L))b.classList.add('pic');
+        if(L%10===0)b.classList.add('star');else if(isPic(L))b.classList.add('pic');else if(isMan(L))b.classList.add('man');
         b.onclick=()=>load(L);grid.appendChild(b);
       }
       d.appendChild(grid);
@@ -498,6 +545,14 @@ function renderGallery(){
     [['Easy',3],['Medium',4],['Hard',6]].forEach(([t,n])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>loadGallery(i,n);c.querySelector('.sz').appendChild(b)});
     g.appendChild(c);
   });
+  const g2=$('manList');
+  FOLDS.forEach(n=>{
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<svg viewBox="-2 -2 104 104">${mandalaArt(n,4,mulberry32((500+n)*40503+n*131+4))}</svg><b class="serif">${n} petals</b><div class="sz"></div>`;
+    c.querySelector('svg').onclick=()=>loadMandala(n,4);
+    [['Easy',3],['Medium',4],['Hard',6]].forEach(([t,k])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>loadMandala(n,k);c.querySelector('.sz').appendChild(b)});
+    g2.appendChild(c);
+  });
 }
 
 /* ---------- wiring ---------- */
@@ -506,7 +561,7 @@ $('levelsBtn').onclick=()=>show('levels');
 $('aboutBtn').onclick=()=>show('about');
 $('backBtn').onclick=()=>show(cur&&!cur.n?'gallery':'levels');
 $('galBtn').onclick=()=>show('gallery');
-$('nextBtn').onclick=()=>cur.n?load(cur.n+1):loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
+$('nextBtn').onclick=()=>cur.n?load(cur.n+1):cur.kind==='man'?loadMandala(FOLDS[(FOLDS.indexOf(cur.fold)+1)%FOLDS.length],cur.tiles.length):loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
 $('hintBtn').onclick=hint;
 const soundUI=()=>{$('soundBtn').style.opacity=store.sound?1:.45;$('soundBtn').textContent=store.sound?'♪':'♪̸'};
 $('soundBtn').onclick=()=>{store.sound=!store.sound;save();soundUI();note(7,0,.4,.1)};soundUI();
@@ -519,6 +574,7 @@ document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.g
 (function deepLink(){
   const h=location.hash.slice(1),g=h.match(/^g-([a-z]+)-(\d)$/);
   if(g){const mi=MOTIFS.findIndex(m=>m.id===g[1]);if(mi>=0)return loadGallery(mi,Math.min(6,Math.max(2,+g[2])))}
+  const m=h.match(/^m-(\d+)-(\d)$/);if(m&&FOLDS.includes(+m[1]))return loadMandala(+m[1],Math.min(6,Math.max(2,+m[2])));
   const L=parseInt(h,10);if(L>0)load(L);
 })();
 if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});

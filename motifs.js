@@ -196,4 +196,38 @@ add('marigold','Marigold','Marigolds (genda) are strung into bright garlands for
 });
 
 window.MOTIFS=M;
+
+/* Rangavalli mandala: n-fold symmetry, built so a petal layer crosses every ring boundary. */
+const PALS=[
+  {bg:'#1b2f7a',bg2:'#ffc928',c:['#c62828','#ffc928','#e8457a','#f26b21']},
+  {bg:'#1f5c33',bg2:'#f6a400',c:['#d92b2b','#5dbb3a','#f26b21','#ffd54a']},
+  {bg:'#7a1436',bg2:'#fff1c9',c:['#e8457a','#f6a400','#17a69b','#8a55c9']},
+  {bg:'#3a1d6e',bg2:'#17a69b',c:['#f7a1c0','#8a55c9','#ffd54a','#e8457a']},
+  {bg:'#0f4c5c',bg2:'#f26b21',c:['#ffd54a','#17a69b','#e8457a','#fff1c9']},
+  {bg:'#5a1f12',bg2:'#ffd54a',c:['#f26b21','#d92b2b','#fff1c9','#4caf50']}];
+window.mandalaArt=(n,k,rng)=>{
+  const pal=pick(rng,PALS),w=46/k,cols=pal.c;let ci=Math.floor(rng()*cols.length),o='';
+  const col=()=>cols[ci++%cols.length];
+  const rim=pick(rng,['diya','scallop','bud','diya']),half=180/n;
+  if(rim==='scallop'){const s=Math.min(5.2,Math.PI*40.5/n),c1=col();
+    o+=ring(n,C(50,4.4+s,s,c1,.7))+(n<=10?ring(n,C(50,4.4+s,s*.9,pal.bg2,.7),half):'')}
+  if(rim==='bud'){const c1=col();o+=ring(n,P(petal(37,46,Math.min(3.6,70/n)),c1,.7))+ring(n,P(petal(38,43.5,Math.min(2.4,45/n)),K.leaf,.6),half)}
+  o+=C(50,50,41.5,pal.bg);
+  if(rim==='diya')o+=ring(n,P('M46.3 8.5Q50 14 53.7 8.5Z',K.clay,.5)+P(petal(0,4.8,1.6,50,8.9),K.yellow,.5),half);
+  o+=ring(n*2,D(50,50-39.6,.55));
+  for(let i=k-1;i>=1;i--){
+    const c=46*i/k,r1=Math.min(38.5,c+w*.85),r0=Math.max(1.5,c-w*.9),h=r1-r0,odd=(k-1-i)%2;
+    if(i<k-1){const rd=c+w*.42;o+=C(50,50,rd,odd?pal.bg2:pal.bg)+ring(n*2,D(50,50-rd+1.6,.5,odd?pal.bg:W))}
+    const wid=Math.min(h*.62,Math.PI*((r0+r1)/2)/n*(.92+rng()*.2)),a=col(),b=col(),style=rng();
+    let p=P(petal(r0,r1,wid),a);
+    if(style<.6&&h>7)p+=P(petal(r0+h*.24,r1-h*.2,wid*.5),b,.6)+D(50,50-(r0+h*.52),Math.min(.9,wid*.18));
+    else if(h>6)p+=L(`M50 ${50-r0-h*.25}L50 ${50-r1+h*.22}`,W,.6);
+    o+=ring(n,p,odd?half:0);
+    if(i===k-1&&k<=4&&n<=12){const y=50-Math.min(38.5,r1+1.5);
+      o+=ring(n,L(`M50 ${y+7}c0 -4 -5 -3.6 -4.4 -.6c.4 1.8 2.6 1.6 2.4 -.2M50 ${y+7}c0 -4 5 -3.6 4.4 -.6c-.4 1.8 -2.6 1.6 -2.4 -.2`,W,.6),odd?0:half)}
+  }
+  const rc=Math.min(6.5,w*.5);
+  o+=C(50,50,rc,K.gold)+ring(n,D(50,50-rc*.62,Math.min(.7,rc*.14),K.brown))+D(50,50,rc*.22,K.red);
+  return o;
+};
 })();

@@ -1,5 +1,5 @@
 // Offline support: try the network first, fall back to the cached copy.
-const CACHE = 'kolam-v2';
+const CACHE = 'kolam-v3';
 const FILES = ['./', 'index.html', 'motifs.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
