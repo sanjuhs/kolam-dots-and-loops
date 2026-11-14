@@ -18,6 +18,12 @@ python3 -m http.server 8771
 
 Then open http://localhost:8771.
 
+Run the level-generation regression checks with Node.js:
+
+```bash
+node --test tests/levels.test.cjs
+```
+
 ## Files
 
 - `index.html` – the game, level generator and screens

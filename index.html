@@ -293,7 +293,7 @@ function build(sp,rng,strict){
     c.color=PAL[(c.ring+off)%PAL.length];
   }
   if(turnable<1)return null;
-  return{w,h,cells,star:!!sp.star,id};
+  return{kind:'kolam',w,h,cells,tiles:[...cells.values()],star:!!sp.star,id};
 }
 
 function conn(c,d){return c.mask>>(((d-c.rot)%4+4)%4)&1}
@@ -314,7 +314,7 @@ function generate(L){
       if(!solved(lv)&&turn.filter(c=>c.rot%c.sym).length>=Math.min(2,turn.length))break;
     }
     if(solved(lv))turn[0].rot=1;
-    lv.n=L;lv.kind='kolam';lv.tiles=[...lv.cells.values()];return lv;
+    lv.n=L;return lv;
   }
 }
 
