@@ -1,7 +1,12 @@
+FROM node:22-bookworm-slim AS dependencies
+WORKDIR /build
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+COPY server/package*.json ./
+RUN npm_config_jobs=2 npm ci --omit=dev && npm cache clean --force
+
 FROM node:22-bookworm-slim
 WORKDIR /app/server
-COPY server/package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=dependencies /build/node_modules ./node_modules
 COPY server/ ./
 COPY motifs.js picture-symmetries.js puzzle-engine.js /app/
 RUN mkdir -p /data && chown node:node /data
