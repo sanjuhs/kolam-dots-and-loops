@@ -27,8 +27,8 @@ Browser checks require Playwright separately. `CHROME_PATH` can select installed
 - Application: `kolam-api`, UUID `logso8gs88gcgscoow08ssgk`
 - API: https://kolam-api.coolify.sanjayprasadhs.com/api/health
 - Web: https://rangoli-design-game.vercel.app
-- Build: root `Dockerfile` via `docker-compose.yaml`
-- Dedicated named Compose volume: `kolam-data`, mounted at `/data`
+- Build: root `Dockerfile` through the Coolify application. `docker-compose.yaml` is an optional standalone deployment recipe.
+- Dedicated Coolify-managed volume: `logso8gs88gcgscoow08ssgk-kolam-data`, mounted at `/data`
 - Runtime variables: `.env.example` lists names; production secrets live only in Coolify.
 - Better Auth migrations are applied at startup; game tables are additive, with foreign keys and WAL mode.
 - One-hour backup checks create one consistent SQLite backup per India-calendar day and retain seven files in `/data/backups`. These are local backups on the same VPS, not protection against losing the VPS. Restore while the app is stopped by replacing `kolam.sqlite` with a selected backup and removing its old WAL/SHM files. Keep `BETTER_AUTH_SECRET` stable across releases.

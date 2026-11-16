@@ -8,22 +8,32 @@
     );
   };
   async function request(path, body, signal) {
-    const response = await fetch("/api/" + path, {
-      method: body ? "POST" : "GET",
-      credentials: "same-origin",
-      headers: body ? { "Content-Type": "application/json" } : {},
-      ...(body ? { body: JSON.stringify(body) } : {}),
-      signal,
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      const error = Error(
-        result.error || result.message || "Please try again.",
-      );
-      error.status = response.status;
-      throw error;
+    const controller = new AbortController(),
+      timer = setTimeout(() => controller.abort(), 10000),
+      abort = () => controller.abort();
+    if (signal?.aborted) controller.abort();
+    else signal?.addEventListener("abort", abort, { once: true });
+    try {
+      const response = await fetch("/api/" + path, {
+        method: body ? "POST" : "GET",
+        credentials: "same-origin",
+        headers: body ? { "Content-Type": "application/json" } : {},
+        ...(body ? { body: JSON.stringify(body) } : {}),
+        signal: controller.signal,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const error = Error(
+          result.error || result.message || "Please try again.",
+        );
+        error.status = response.status;
+        throw error;
+      }
+      return result;
+    } finally {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
     }
-    return result;
   }
   function setup({
     show,
@@ -361,6 +371,7 @@
       location.hash === "#reset-password" &&
       new URLSearchParams(location.search).has("token")
     ) {
+      const token = new URLSearchParams(location.search).get("token");
       show("account");
       const form = $("recoverForm");
       document
@@ -370,7 +381,6 @@
       form.querySelector("[name=code]").closest("label").hidden = true;
       form.querySelector("[name=username]").required = false;
       form.querySelector("[name=code]").required = false;
-      const token = new URLSearchParams(location.search).get("token");
       history.replaceState(null, "", location.pathname);
       form.onsubmit = (e) => {
         e.preventDefault();

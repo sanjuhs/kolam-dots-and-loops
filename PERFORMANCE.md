@@ -36,3 +36,24 @@ Neither version showed sustained unbounded heap growth in that run. A further 40
 - Inspected phone-size screenshots of hard picture and mandala boards, including a run with 6× CPU throttling; no browser errors in the smoke check. CPU throttling does not emulate the Motorola's GPU or memory limits.
 
 `tests/browser-smoke.cjs` preserves the browser flow and offline/audio checks. It requires Playwright separately and the local server described in the README. Testing the updated hosted version on the affected phone is still needed to confirm the real-world result.
+
+## Extended live session (20 minutes)
+
+Tested production commit `2ca8ee2` on 16 November 2026 with a 390×844 touch viewport, DPR 2 and 6× CPU slowdown. Navigator reported four cores and 2 GB device memory; that is an advertised browser property, **not** an actual 2 GB RAM cap or a Motorola hardware emulator. The Chrome process ran on this Mac.
+
+Completed 2,702 sequential levels (looping through 1–2,000), 10,782 dispatched pointer taps and 98,456 hints, with sound enabled during play, regular level/gallery navigation and forced-GC checkpoints. The accelerated solver exercised actual game functions and event handlers rather than reproducing a person's solve pace.
+
+| Checkpoint | Completed levels | JS heap after GC | Renderer RSS |
+| --- | ---: | ---: | ---: |
+| Cold baseline | 0 | 0.989 MiB | 300.8 MiB |
+| 2.1 min, warm | 288 | 2.118 MiB | 368.8 MiB |
+| 12.4 min | 1,680 | 2.308 MiB | 439.2 MiB |
+| 16.5 min | 2,224 | 2.274 MiB | 472.9 MiB |
+| 20.1 min, end | 2,702 | 2.292 MiB | 502.0 MiB |
+| After idle | 2,702 | 2.201 MiB | 501.8 MiB |
+
+No page errors or renderer crashes occurred. JavaScript heap stayed near its warmed level and fell after idle. Listeners peaked at 809 and fell to 409 after the level loop; DOM nodes peaked at 4,818 and later fell as screens/chapters changed. Those counts include the current chapter's level buttons, decoded image documents and SVG shadow content. There was no evidence of accumulating JS listeners or an unbounded JS heap leak in this session.
+
+Renderer RSS is a separate concern: it rose from 301 to 502 MiB and was still near 502 MiB after idle. It includes browser caches, raster data and allocator reservations. This test does **not** establish that total browser memory stays flat, or that a low-RAM phone will remain smooth. Direct testing on the affected phone is still required. The new release also avoids runtime picture-symmetry image decoding for ranked/gallery variants through a small shared canonical table.
+
+Raw checkpoints are in [performance/2026-11-16-live-20min.json](performance/2026-11-16-live-20min.json). Reproduce with Playwright available and `node scripts/stress-live.cjs`; set `STRESS_MINUTES`, `STRESS_OUTPUT`, `BASE_URL` or `CHROME_PATH` as needed. The script samples process RSS using macOS/Linux `ps`; it is not a general phone memory profiler.

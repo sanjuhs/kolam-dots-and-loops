@@ -3,9 +3,10 @@ import { username } from "better-auth/plugins";
 import { getMigrations } from "better-auth/db/migration";
 import nodemailer from "nodemailer";
 export async function createAuth(db, config) {
-  const transport = config.smtpURL
-    ? nodemailer.createTransport(config.smtpURL)
-    : null;
+  const transport =
+    config.smtpURL && config.mailFrom
+      ? nodemailer.createTransport(config.smtpURL)
+      : null;
   const auth = betterAuth({
     appName: "Kolam · Dots & Loops",
     database: db,
