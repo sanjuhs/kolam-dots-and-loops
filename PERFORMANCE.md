@@ -57,3 +57,22 @@ No page errors or renderer crashes occurred. JavaScript heap stayed near its war
 Renderer RSS is a separate concern: it rose from 301 to 502 MiB and was still near 502 MiB after idle. It includes browser caches, raster data and allocator reservations. This test does **not** establish that total browser memory stays flat, or that a low-RAM phone will remain smooth. Direct testing on the affected phone is still required. The new release also avoids runtime picture-symmetry image decoding for ranked/gallery variants through a small shared canonical table.
 
 Raw checkpoints are in [performance/2026-11-16-live-20min.json](performance/2026-11-16-live-20min.json). Reproduce with Playwright available and `node scripts/stress-live.cjs`; set `STRESS_MINUTES`, `STRESS_OUTPUT`, `BASE_URL` or `CHROME_PATH` as needed. The script samples process RSS using macOS/Linux `ps`; it is not a general phone memory profiler.
+
+## New collections: ten-minute production session
+
+The new collections were tested on production frontend `44a86f3`: 390×844 touch viewport, DPR 2, 6× CPU slowdown. The solver repeatedly cycled through 29 fixed puzzles: twelve-ring mandalas in all six styles with 8, 16 or 24 petals, 144-tile pictures, rolling rows and columns, and large numbered puzzles. Later recovery-copy and audio-suspension changes do not change these puzzle definitions.
+
+Completed **1,131 solves in 10 minutes**, with no page errors or renderer crashes. Warmed post-GC heap measured 2.221 MiB after 232 solves, 2.265 MiB after 696, and 2.283 MiB after 1,131. DOM nodes and listeners remained near 2,583 / 197 after warm-up. Every screen-exit checkpoint had **zero active game intervals, zero pending hint/win timers and zero connected audio voices**. The local practice list held the same 29 entries throughout repeated play.
+
+Renderer RSS rose from 295 MiB cold to 461 MiB warm, reached 539 MiB, fell to 496 MiB at eight minutes and ended at 527 MiB, unchanged after idle. This is consistent with bounded JS objects and variable native/browser allocations in this run; it is not evidence of a flat native footprint. No conclusion that native memory is leak-free is justified.
+
+A separate two-minute diagnostic used normal CPU speed, the same puzzle corpus and a synthetic critical [Chrome DevTools memory-pressure notification](https://chromedevtools.github.io/devtools-protocol/tot/Memory/). After 257 solves, RSS remained at 451 MiB after idle and after the notification, while JS heap stayed at 2.239 MiB. Therefore this experiment did **not** establish that all observed renderer memory would be released under pressure. It cannot distinguish cache/allocator reservations from a native retention problem. None of these desktop simulations replaces profiling the affected phone.
+
+Raw records: [ten-minute collection session](performance/2026-11-16-live-packs-10min.json) and [pressure diagnostic](performance/2026-11-16-memory-pressure-diagnostic.json). `scripts/stress-packs.cjs` reproduces these tests; `MEMORY_PRESSURE=1` enables the diagnostic and `CPU_SLOWDOWN=1` selects normal CPU speed.
+
+## Production feature verification
+
+- Nine generator/lifecycle/offline checks and three backend checks pass. The backend checks cover registration, cookie sessions, recovery-code replacement and password reset, session revocation, origin checks, invalid replay rejection, server-derived times/points, score idempotency, deletion, new packs, rolling puzzles and all 10,000 picture levels in the ranked range.
+- The live mobile-browser account flow passes: register without email → save recovery code → rank a solve → see leaderboard → replace recovery code with password confirmation → sign out → recover account → sign in → solve master mandala, both rolling modes and 144-tile picture → reload with progress intact → reload offline, finish practice, reconnect and sync.
+- Session cookies were checked for HttpOnly, Secure and SameSite=Lax on production. Recovery downloads include the username and game URL. Test accounts were deleted after verification.
+- Backend account/session and saved-puzzle data survived a fresh container replacement. The dedicated `/data` volume was verified on the running container. The HTTPS health endpoint reports healthy; SMTP readiness reports false, so email reset controls stay hidden and recovery codes remain available.

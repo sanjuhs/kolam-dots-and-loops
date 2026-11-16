@@ -47,7 +47,7 @@ const baseURL = process.env.BASE_URL || "http://127.0.0.1:8772";
       .locator("#downloadRecovery")
       .getAttribute("href");
     assert(decodeURIComponent(download).includes(name));
-    const recovery = await page.locator("#recoveryCode").textContent();
+    let recovery = await page.locator("#recoveryCode").textContent();
     assert(recovery.length > 30);
     await page.getByRole("button", { name: "I’ve saved it" }).click();
     await page.evaluate(() => load(1));
@@ -72,6 +72,21 @@ const baseURL = process.env.BASE_URL || "http://127.0.0.1:8772";
       name,
     );
     await page.evaluate(() => show("home"));
+    await page
+      .getByRole("button", { name: "Your progress · " + name, exact: true })
+      .click();
+    await page.getByText("Account settings", { exact: true }).click();
+    await page.locator("#deletePassword").fill(password);
+    await page
+      .getByRole("button", { name: "Replace recovery code", exact: true })
+      .click();
+    await page.waitForFunction(
+      () => !document.getElementById("recoveryBox").hidden,
+    );
+    const replacement = await page.locator("#recoveryCode").textContent();
+    assert.notEqual(replacement, recovery);
+    recovery = replacement;
+    await page.getByRole("button", { name: "I’ve saved it" }).click();
     await page
       .getByRole("button", { name: "Your progress · " + name, exact: true })
       .click();

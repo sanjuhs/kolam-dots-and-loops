@@ -39,7 +39,8 @@ const { chromium } = require("playwright");
     );
     const cdp = await context.newCDPSession(page);
     await cdp.send("Performance.enable");
-    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 6 });
+    const slowdown = Number(process.env.CPU_SLOWDOWN || 6);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: slowdown });
     const session = await browser.newBrowserCDPSession();
     const minutes = Number(process.env.STRESS_MINUTES || 10),
       started = Date.now(),
@@ -108,7 +109,7 @@ const { chromium } = require("playwright");
           {
             configuration: {
               minutes,
-              cpuSlowdown: 6,
+              cpuSlowdown: slowdown,
               viewport: "390x844",
               dpr: 2,
               physicalMemoryLimit: false,
@@ -165,6 +166,13 @@ const { chromium } = require("playwright");
     await sample("end");
     await page.waitForTimeout(10000);
     await sample("after-idle");
+    if (process.env.MEMORY_PRESSURE) {
+      await session.send("Memory.simulatePressureNotification", {
+        level: "critical",
+      });
+      await page.waitForTimeout(10000);
+      await sample("after-critical-pressure");
+    }
     console.log("COMPLETE", JSON.stringify({ rounds, errors }));
   } finally {
     await browser.close();
