@@ -194,3 +194,11 @@ test("all new packs and rolling puzzles start unsolved and have a solution", asy
       assert.equal(lv.tiles.length, n);
     }
 });
+
+test("every ranked numbered picture has canonical rotation data", async () => {
+  for (let level = 5; level <= 100000; level += 10) {
+    await engine.puzzleFor("n-" + level, async () => {
+      throw new Error("Missing picture equivalence data for level " + level);
+    });
+  }
+});
