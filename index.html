@@ -51,6 +51,7 @@ button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .bar button{padding:8px 14px;font-size:.92rem;min-width:44px;min-height:40px}
 #boardWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 0}
 svg.kolam{width:100%;height:100%;max-width:760px;overflow:visible;filter:drop-shadow(0 0 5px rgba(255,236,200,.35))}
+#board.kolam{filter:none}
 .tile{cursor:pointer}
 .rot{transition:transform .3s cubic-bezier(.3,1.5,.5,1);transform-origin:0 0}
 .rot path{fill:var(--c);fill-opacity:0;stroke:var(--chalk);stroke-width:.062;stroke-linejoin:round;stroke-linecap:round;
@@ -62,8 +63,6 @@ svg.kolam{width:100%;height:100%;max-width:760px;overflow:visible;filter:drop-sh
 .won .rot path{fill-opacity:.92;stroke-opacity:1;stroke-width:.07}
 .won .dot{fill:#fff}
 .won .tile{cursor:default}
-svg.kolam.won{animation:bloom 1.4s ease}
-@keyframes bloom{0%{filter:drop-shadow(0 0 5px rgba(255,236,200,.35))}40%{filter:drop-shadow(0 0 26px rgba(255,220,150,.95))}100%{filter:drop-shadow(0 0 9px rgba(255,236,200,.55))}}
 #foot{min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
 #tip{color:var(--ink);font-size:1.02rem;max-width:30em}
 #winBox{display:none;flex-direction:column;align-items:center;gap:10px}
@@ -93,7 +92,7 @@ details.chapd[open]{padding-bottom:14px}
 .grid button.pic::after{content:"❀";position:absolute;top:2px;right:5px;font-size:.66rem;opacity:.9}
 .gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
 .card{background:rgba(0,0,0,.16);border-radius:18px;padding:10px;text-align:center}
-.card svg{width:100%;display:block;cursor:pointer}
+.card img{width:100%;aspect-ratio:1;display:block;cursor:pointer}
 .card b{display:block;margin:6px 0 8px;font-weight:500;font-size:1.05rem}
 .card .sz{display:flex;gap:4px;justify-content:center}
 .card .sz button{padding:6px 8px;font-size:.72rem}
@@ -105,6 +104,7 @@ details.chapd[open]{padding-bottom:14px}
 .galh{margin:26px 2px 4px;font-size:1.35rem}
 .about p{color:var(--ink);line-height:1.6;font-size:1.02rem}
 .about h2{margin-top:22px;font-size:1.4rem}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -345,9 +345,15 @@ function draw(lv,svg,onTap){
 /* ---------- picture (rangoli) levels ---------- */
 const isPic=L=>L%10===5;
 const picSize=L=>L<=20?2:L<=50?3:L<=140?4:L<=400?5:(L%20===5?5:6);
-function tileSyms(art,n){return new Promise(res=>{
+const artURL=(art,box='0 0 100 100',size=100)=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${box}">${art}</svg>`);
+// A shared image keeps each tile from cloning hundreds of SVG paths into a use shadow tree.
+function artImage(art,id){return el('image',{id,width:100,height:100,href:artURL(art)})}
+function tileSyms(art,n,signal){return new Promise(res=>{
   const T=28,S=n*T,img=new Image();let finished=false;
-  const end=v=>{if(!finished){finished=true;res(v)}},fail=()=>end(Array(n*n).fill(4));
+  let timer;
+  const end=v=>{if(finished)return;finished=true;clearTimeout(timer);img.onload=img.onerror=null;
+    if(signal)signal.removeEventListener('abort',fail);img.removeAttribute('src');res(v)},fail=()=>end(Array(n*n).fill(4));
+  if(signal&&signal.aborted){fail();return}
   img.onload=()=>{try{
     const cv=document.createElement('canvas');cv.width=cv.height=S;
     const cx=cv.getContext('2d',{willReadFrequently:true});cx.drawImage(img,0,0,S,S);
@@ -360,12 +366,13 @@ function tileSyms(art,n){return new Promise(res=>{
       out.push(diff(1)<.006?1:diff(2)<.006?2:4);
     }
     end(out)}catch(e){fail()}};
-  img.onerror=fail;setTimeout(fail,2000);
-  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 100 100">${art}</svg>`);
+  img.onerror=fail;timer=setTimeout(fail,2000);
+  if(signal)signal.addEventListener('abort',fail,{once:true});
+  img.src=artURL(art,undefined,S);
 })}
-async function makePic(mi,n,seed){
+async function makePic(mi,n,seed,signal){
   const m=MOTIFS[mi],rng=mulberry32(seed*2654435761+n),art=m.draw(rng);
-  const syms=await tileSyms(art,n),tiles=[];
+  const syms=await tileSyms(art,n,signal),tiles=[];
   for(let y=0;y<n;y++)for(let x=0;x<n;x++)tiles.push({x,y,rot:0,sym:syms[y*n+x]});
   const turn=tiles.filter(c=>c.sym>1);
   for(let tries=0;tries<50;tries++){
@@ -378,7 +385,7 @@ async function makePic(mi,n,seed){
 function drawPic(lv,svg,onTap){
   svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
   const n=lv.size,s=100/n,aid='art-'+svg.id;
-  const defs=el('defs',{},svg);defs.innerHTML=`<g id="${aid}">${lv.art}</g>`;
+  const defs=el('defs',{},svg);defs.appendChild(artImage(lv.art,aid));
   for(const c of lv.tiles){
     const g=el('g',{class:'tile',transform:`translate(${(c.x+.5)*s},${(c.y+.5)*s})`},svg);
     const r=el('g',{class:'rot'},g);r.style.transform=`rotate(${c.rot*90}deg)`;
@@ -410,10 +417,10 @@ function makeMandala(n,k,S,seed){
 function drawMandala(lv,svg,onTap){
   svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
   const k=lv.tiles.length,aid='art-'+svg.id,circ=r=>`M50 ${50-r}A${r} ${r} 0 1 1 49.99 ${50-r}Z`;
-  const defs=el('defs',{},svg);let dh=`<g id="${aid}">${lv.art}</g>`;
+  const defs=el('defs',{},svg);let dh='';
   const band=i=>(i?circ(46*i/k):'')+circ(i===k-1?52:46*(i+1)/k);
   lv.tiles.forEach(c=>dh+=`<clipPath id="${aid}-c${c.i}"><path clip-rule="evenodd" d="${band(c.i)}"/></clipPath>`);
-  defs.innerHTML=dh;
+  defs.innerHTML=dh;defs.appendChild(artImage(lv.art,aid));
   for(const c of lv.tiles){
     const g=el('g',{class:'tile'},svg);
     const r=el('g',{class:'rot'},g);r.style.transformOrigin='50px 50px';r.style.transition='transform .4s ease';
@@ -428,13 +435,21 @@ function drawMandala(lv,svg,onTap){
 
 /* ---------- sound ---------- */
 let ac;
+const voices=new Set();
+function releaseVoice(v){v.o.onended=null;v.o.disconnect();v.g.disconnect();voices.delete(v)}
+function stopAudio(){
+  for(const v of voices){try{v.o.stop()}catch(e){}releaseVoice(v)}
+  if(ac&&ac.state==='running')ac.suspend().catch(()=>{});
+}
 const SCALE=[0,2,4,7,9,12,14,16,19,21,24];
 function note(semi,when,dur,vol){
-  if(!store.sound)return;
+  if(!store.sound||document.hidden)return;
   try{
     ac=ac||new (window.AudioContext||window.webkitAudioContext)();
-    if(ac.state==='suspended')ac.resume();
+    ac.resume().catch(()=>{});
+    if(voices.size>=24){const v=voices.values().next().value;v.o.stop();releaseVoice(v)}
     const t=ac.currentTime+when,o=ac.createOscillator(),g=ac.createGain();
+    const v={o,g};voices.add(v);o.onended=()=>releaseVoice(v);
     o.type='sine';o.frequency.value=261.63*Math.pow(2,semi/12);
     g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
     o.connect(g).connect(ac.destination);o.start(t);o.stop(t+dur+.05);
@@ -445,10 +460,14 @@ function note(semi,when,dur,vol){
 const $=id=>document.getElementById(id);
 const board=$('board');
 let cur=null,won=false;
+const levelTimers=new Set();
+function later(fn,ms){const id=setTimeout(()=>{levelTimers.delete(id);fn()},ms);levelTimers.add(id)}
+function clearLevelEffects(){for(const id of levelTimers)clearTimeout(id);levelTimers.clear();stopAudio()}
 const TIPS={1:'Tap a piece to turn it.',2:'Make every line meet its neighbour.',3:'Close the loop around the dots.',4:'No line should point at nothing.',10:'✦ A classic shape. Find the symmetry.'};
 const PRAISE=['Beautiful!','Lovely!','So pretty!','Wonderful!','Well done!','Perfect!'];
 
 function show(name){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===name));
+  if(name!=='game'){++loadToken;cancelPicture();clearLevelEffects();board.innerHTML='';cur=null;won=false}
   if(name==='levels')renderLevels();if(name==='gallery')renderGallery();
   if(name!=='game'){setTheme(CHAPTERS[0]);history.replaceState(null,'',location.pathname)}}
 function setTheme(ch){document.body.style.setProperty('--g1',ch.g[0]);document.body.style.setProperty('--g2',ch.g[1]);
@@ -456,7 +475,15 @@ function setTheme(ch){document.body.style.setProperty('--g1',ch.g[0]);document.b
 
 function refresh(){if(cur.kind==='kolam')for(const c of cur.cells.values())c.g.classList.toggle('ok',tileOk(cur,c))}
 let loadToken=0;
+let pictureAbort=null;
+function cancelPicture(){if(pictureAbort){pictureAbort.abort();pictureAbort=null}}
+function startLoad(){++loadToken;cancelPicture();clearLevelEffects();return loadToken}
+function requestPicture(mi,n,seed,L){
+  const tk=startLoad(),controller=new AbortController();pictureAbort=controller;
+  makePic(mi,n,seed,controller.signal).then(lv=>{if(tk!==loadToken)return;pictureAbort=null;if(L)lv.n=L;begin(lv)});
+}
 function begin(lv){
+  clearLevelEffects();
   cur=lv;won=false;
   const L=lv.n,ch=L?chapterOf(L):CHAPTERS[0];setTheme(ch);
   const k=lv.kind;
@@ -473,15 +500,15 @@ function begin(lv){
   history.replaceState(null,'','#'+(L||lv.link));
 }
 function load(L){
-  const tk=++loadToken;
-  if(isPic(L)){const k=(L-5)/10;makePic(k%MOTIFS.length,picSize(L),L).then(lv=>{if(tk!==loadToken)return;lv.n=L;begin(lv)})}
-  else if(isMan(L)){
+  if(isPic(L)){const k=(L-5)/10;requestPicture(k%MOTIFS.length,picSize(L),L,L);return}
+  startLoad();
+  if(isMan(L)){
     const rings=L<=20?2:L<=50?3:L<=140?4:L<=400?5:(L%20===8?5:6),j=(L-8)/10;
     const lv=makeMandala([6,8,5,12,10,7,16,9][j%8],rings,L<=140?3:4,L);lv.n=L;begin(lv)}
   else begin(generate(L));
 }
-function loadGallery(mi,n){const tk=++loadToken;makePic(mi,n,1000+mi).then(lv=>{if(tk===loadToken)begin(lv)})}
-function loadMandala(n,k){++loadToken;begin(makeMandala(n,k,k>=5?4:3,500+n))}
+function loadGallery(mi,n){requestPicture(mi,n,1000+mi)}
+function loadMandala(n,k){startLoad();begin(makeMandala(n,k,k>=5?4:3,500+n))}
 function tap(c){
   if(won)return;
   if(c.sym===1){note(SCALE[(c.x+c.y)%6]-12,0,.15,.05);return}
@@ -493,7 +520,7 @@ function tap(c){
 function win(){
   won=true;if(cur.n){doneSet.add(cur.n);store.done=[...doneSet];save()}
   $('hintBtn').disabled=true;
-  setTimeout(()=>{
+  later(()=>{
     board.classList.add('won');
     [0,2,4,7,9,12].forEach((s,i)=>note(s,i*.11,1.4,.09));note(12,.75,2.2,.07);note(16,.75,2.2,.05);
     $('tip').style.display='none';$('winMsg').textContent=PRAISE[((cur.n||0)+cur.tiles.length)%PRAISE.length];$('winNote').textContent=cur.note||'';$('winBox').classList.add('on');
@@ -505,7 +532,7 @@ function hint(){
   if(!wrong.length)return;
   const c=wrong[Math.floor(Math.random()*wrong.length)];
   c.rot+=c.sym-off(cur,c);c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
-  c.g.classList.add('hinted');setTimeout(()=>c.g.classList.remove('hinted'),1400);
+  c.g.classList.add('hinted');later(()=>c.g.classList.remove('hinted'),1400);
   note(7,0,.6,.1);refresh();if(solved(cur))win();
 }
 function nextUndone(){let L=1;while(doneSet.has(L))L++;return L}
@@ -540,16 +567,16 @@ function renderGallery(){
   const g=$('galList');if(g.children.length)return;
   MOTIFS.forEach((m,i)=>{
     const c=document.createElement('div');c.className='card';
-    c.innerHTML=`<svg viewBox="-2 -2 104 104">${m.draw(mulberry32((1000+i)*2654435761+4))}</svg><b class="serif">${m.name}</b><div class="sz"></div>`;
-    c.querySelector('svg').onclick=()=>loadGallery(i,4);
+    c.innerHTML=`<img loading="lazy" alt="${m.name}" src="${artURL(m.draw(mulberry32((1000+i)*2654435761+4)),'-2 -2 104 104')}"><b class="serif">${m.name}</b><div class="sz"></div>`;
+    c.querySelector('img').onclick=()=>loadGallery(i,4);
     [['Easy',3],['Medium',4],['Hard',6]].forEach(([t,n])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>loadGallery(i,n);c.querySelector('.sz').appendChild(b)});
     g.appendChild(c);
   });
   const g2=$('manList');
   FOLDS.forEach(n=>{
     const c=document.createElement('div');c.className='card';
-    c.innerHTML=`<svg viewBox="-2 -2 104 104">${mandalaArt(n,4,mulberry32((500+n)*40503+n*131+4))}</svg><b class="serif">${n} petals</b><div class="sz"></div>`;
-    c.querySelector('svg').onclick=()=>loadMandala(n,4);
+    c.innerHTML=`<img loading="lazy" alt="${n} petals" src="${artURL(mandalaArt(n,4,mulberry32((500+n)*40503+n*131+4)),'-2 -2 104 104')}"><b class="serif">${n} petals</b><div class="sz"></div>`;
+    c.querySelector('img').onclick=()=>loadMandala(n,4);
     [['Easy',3],['Medium',4],['Hard',6]].forEach(([t,k])=>{const b=document.createElement('button');b.textContent=t;b.onclick=()=>loadMandala(n,k);c.querySelector('.sz').appendChild(b)});
     g2.appendChild(c);
   });
@@ -564,7 +591,8 @@ $('galBtn').onclick=()=>show('gallery');
 $('nextBtn').onclick=()=>cur.n?load(cur.n+1):cur.kind==='man'?loadMandala(FOLDS[(FOLDS.indexOf(cur.fold)+1)%FOLDS.length],cur.tiles.length):loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
 $('hintBtn').onclick=hint;
 const soundUI=()=>{$('soundBtn').style.opacity=store.sound?1:.45;$('soundBtn').textContent=store.sound?'♪':'♪̸'};
-$('soundBtn').onclick=()=>{store.sound=!store.sound;save();soundUI();note(7,0,.4,.1)};soundUI();
+$('soundBtn').onclick=()=>{store.sound=!store.sound;save();soundUI();if(!store.sound)stopAudio();else note(7,0,.4,.1)};soundUI();
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAudio()});
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
 
 (function homeArt(){

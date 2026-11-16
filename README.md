@@ -18,10 +18,10 @@ python3 -m http.server 8771
 
 Then open http://localhost:8771.
 
-Run the level-generation regression checks with Node.js:
+Run the level-generation, lifecycle and offline-cache regression checks with Node.js:
 
 ```bash
-node --test tests/levels.test.cjs
+node --test tests/*.test.cjs
 ```
 
 ## Files
@@ -33,6 +33,19 @@ node --test tests/levels.test.cjs
 ## Share a level
 
 Add the level number to the link: `/#37`. Gallery pictures look like `/#g-peacock-4`, and mandalas like `/#m-8-4` (8 petals, 4 rings).
+
+## Performance checks
+
+See [PERFORMANCE.md](PERFORMANCE.md) for the 16 November 2026 investigation, measurements and remaining device-testing limits.
+
+An optional mobile-browser smoke check uses Playwright against the local server on port 8771:
+
+```bash
+node tests/browser-smoke.cjs
+```
+
+Playwright and its Chromium browser must be available separately; the game itself has no dependencies. Set `CHROME_PATH` to an installed Chrome executable to use it instead. This check covers play, hints, wins, gallery puzzles, audio cleanup and a real offline reload.
+Set `BASE_URL=https://rangoli-design-game.vercel.app` to run the same check against production.
 
 ## License
 
