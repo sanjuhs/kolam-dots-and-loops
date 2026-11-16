@@ -55,7 +55,7 @@ test("accounts, recovery, verified scoring, progress and deletion work together"
     );
     let r = await req("register", { username: "visitor", password });
     assert.equal(r.status, 201, JSON.stringify(r));
-    const recovery = r.body.recoveryCode;
+    let recovery = r.body.recoveryCode;
     assert.match(recovery, /^[A-F0-9-]{39}$/);
     assert(cookie.includes("kolam"));
     assert.equal((await req("me")).body.username, "visitor");
@@ -123,6 +123,14 @@ test("accounts, recovery, verified scoring, progress and deletion work together"
       (await req("leaderboard?mode=fastest&puzzle=n-1")).body.rows[0].username,
       "visitor",
     );
+    assert.equal(
+      (await req("recovery-code", { password: "wrong" })).status,
+      400,
+    );
+    const replacement = await req("recovery-code", { password });
+    assert.equal(replacement.status, 200);
+    assert.notEqual(replacement.body.recoveryCode, recovery);
+    recovery = replacement.body.recoveryCode;
     r = await req("recover", {
       username: "visitor",
       code: "wrong",

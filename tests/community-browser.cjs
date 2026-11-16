@@ -37,6 +37,16 @@ const baseURL = process.env.BASE_URL || "http://127.0.0.1:8772";
       () => !document.getElementById("recoveryBox").hidden,
     );
     created = true;
+    const authCookie = (await context.cookies()).find((c) =>
+      c.name.includes("session_token"),
+    );
+    assert(authCookie.httpOnly);
+    assert.equal(authCookie.sameSite, "Lax");
+    assert.equal(authCookie.secure, new URL(baseURL).protocol === "https:");
+    const download = await page
+      .locator("#downloadRecovery")
+      .getAttribute("href");
+    assert(decodeURIComponent(download).includes(name));
     const recovery = await page.locator("#recoveryCode").textContent();
     assert(recovery.length > 30);
     await page.getByRole("button", { name: "I’ve saved it" }).click();

@@ -7,6 +7,34 @@
       Math.floor(seconds / 60) + ":" + String(seconds % 60).padStart(2, "0")
     );
   };
+  function puzzleLabel(key) {
+    const parts = key.split("-");
+    if (parts[0] === "n") return "Level " + parts[1];
+    const motif =
+      globalThis.MOTIFS.find((m) => m.id === parts[1])?.name || parts[1];
+    if (parts[0] === "g") return motif + " · " + parts[2] + " × " + parts[2];
+    if (parts[0] === "r")
+      return (
+        motif +
+        " · rolling " +
+        (parts[3] === "h" ? "rows" : "columns") +
+        " · " +
+        parts[2] +
+        " strips"
+      );
+    if (parts[0] === "p")
+      return (
+        (Puzzles.PACKS.find((p) => p[0] === parts[1])?.[1] || "Mandala") +
+        " · " +
+        parts[2] +
+        " petals · " +
+        parts[3] +
+        " rings"
+      );
+    if (parts[0] === "m")
+      return parts[1] + "-petal mandala · " + parts[2] + " rings";
+    return "Saved puzzle";
+  }
   async function request(path, body, signal) {
     const controller = new AbortController(),
       timer = setTimeout(() => controller.abort(), 10000),
@@ -55,7 +83,7 @@
  <form id="recoverForm" class="accountForm" hidden><label>Username<input name="username" autocomplete="username" required maxlength="24" autocapitalize="none"></label><label>Saved recovery code<input name="code" autocomplete="off" required maxlength="80" spellcheck="false"></label><label>New password<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><button class="primary">Reset password</button></form>
  <form id="emailResetForm" class="accountForm" hidden><label>Recovery email<input name="email" type="email" autocomplete="email" required></label><button>Send reset link</button></form>
  <button id="emailResetBtn" hidden>Use email recovery</button>
- </div><div id="accountMember" hidden><h2 id="playerName"></h2><p id="playerStats" class="lead"></p><p id="playerBadge"></p><div id="recentPuzzles" class="packOptions"></div><p class="lead">Only verified solves earn leaderboard points. Practice completed before signing in can be saved without adding leaderboard points.</p><button id="importProgress">Save this phone’s completed levels</button><button id="signOut">Sign out</button><details><summary>Account settings</summary><label>Current password<input id="deletePassword" type="password" autocomplete="current-password"></label><button id="deleteAccount">Delete my account and cloud progress</button></details></div>
+ </div><div id="accountMember" hidden><h2 id="playerName"></h2><p id="playerStats" class="lead"></p><p id="playerBadge"></p><div id="recentPuzzles" class="packOptions"></div><p class="lead">Only verified solves earn leaderboard points. Practice completed before signing in can be saved without adding leaderboard points.</p><button id="importProgress">Save this phone’s completed levels</button><button id="signOut">Sign out</button><details><summary>Account settings</summary><label>Current password<input id="deletePassword" type="password" autocomplete="current-password"></label><button id="newRecovery">Replace recovery code</button><p class="formHelp">Replacing the code makes your old code stop working.</p><button id="deleteAccount">Delete my account and cloud progress</button></details></div>
  <div id="recoveryBox" hidden><h2>Save your recovery code</h2><p class="lead">Keep this somewhere safe. It can reset your password without email. Each use replaces it with a new code.</p><output id="recoveryCode"></output><div class="packOptions"><button id="copyRecovery">Copy code</button><a id="downloadRecovery" download="kolam-recovery.txt">Download code</a><button id="savedRecovery">I’ve saved it</button></div></div><p id="accountStatus" role="status" aria-live="polite"></p>
  </div></section>
  <section id="leaderboard" class="screen"><div class="bar"><button data-account-home>‹ Home</button><b class="serif">Leaderboard</b></div><div class="scroll"><p class="lead">A little friendly competition. Each puzzle awards points once; a better solve can improve them. Hints reduce points. Fastest times require a solve without hints.</p><label>View<select id="leaderMode"><option value="all">All-time points</option><option value="today">Today’s points (India time)</option><option value="fastest">Fastest · last puzzle</option></select></label><p id="leaderPuzzle"></p><p id="leaderStatus" role="status"></p><ol id="leaderRows" class="leaderRows"></ol><button id="refreshLeaders">Refresh</button></div></section>`,
@@ -80,13 +108,17 @@
           performance.now() - active.started,
         );
     };
-    function setRecovery(code) {
+    function setRecovery(code, username = player?.username) {
       $("recoveryBox").hidden = !code;
       $("recoveryCode").textContent = code || "";
       $("downloadRecovery").href = code
         ? "data:text/plain;charset=utf-8," +
           encodeURIComponent(
-            "Kolam recovery code\n" +
+            "Kolam recovery code\nUsername: " +
+              (username || "Your chosen username") +
+              "\nGame: " +
+              location.origin +
+              "\nCode: " +
               code +
               "\nKeep this private. It can reset your password.",
           )
@@ -102,9 +134,7 @@
       $("recentPuzzles").replaceChildren();
       for (const key of player.progress.slice(-8)) {
         const b = document.createElement("button");
-        b.textContent = key.startsWith("n-")
-          ? "Level " + key.slice(2)
-          : key.replace(/^[gprm]-/, "").replaceAll("-", " · ");
+        b.textContent = puzzleLabel(key);
         b.onclick = () => loadPuzzleKey(key);
         $("recentPuzzles").appendChild(b);
       }
@@ -213,7 +243,7 @@
           email: fields.email.trim(),
         });
         await refreshPlayer();
-        setRecovery(data.recoveryCode);
+        setRecovery(data.recoveryCode, data.user.username);
         $("accountStatus").textContent =
           "Your account is ready. Save your recovery code.";
       });
@@ -222,7 +252,7 @@
       e.preventDefault();
       runForm(e.currentTarget, async (fields) => {
         const data = await request("recover", fields);
-        setRecovery(data.recoveryCode);
+        setRecovery(data.recoveryCode, fields.username);
         $("accountStatus").textContent =
           "Password changed. Save your new code, then sign in.";
       });
@@ -272,6 +302,20 @@
         $("accountStatus").textContent = e.message;
       }
     };
+    $("newRecovery").onclick = async () => {
+      try {
+        const data = await request("recovery-code", {
+          password: $("deletePassword").value,
+        });
+        setRecovery(data.recoveryCode);
+        $("accountStatus").textContent =
+          "Save your replacement code. Your previous code no longer works.";
+      } catch (e) {
+        $("accountStatus").textContent = e.message;
+      } finally {
+        $("deletePassword").value = "";
+      }
+    };
     $("deleteAccount").onclick = async () => {
       if (
         !confirm(
@@ -315,7 +359,7 @@
       $("leaderStatus").textContent = "Loading…";
       $("leaderRows").replaceChildren();
       $("leaderPuzzle").textContent =
-        mode === "fastest" ? "Puzzle: " + lastKey : "";
+        mode === "fastest" ? "Puzzle: " + puzzleLabel(lastKey) : "";
       try {
         const data = await request(
           "leaderboard?mode=" + mode + "&puzzle=" + encodeURIComponent(lastKey),

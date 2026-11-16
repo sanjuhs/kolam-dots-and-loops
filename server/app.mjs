@@ -19,6 +19,11 @@ export async function createApp(config) {
   app.set("trust proxy", 1);
   app.use(helmet());
   app.use("/api", (req, res, next) => {
+    if (Number(req.headers["content-length"]) > 256 * 1024)
+      return res.status(413).json({ error: "Request is too large." });
+    next();
+  });
+  app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
     if (
       !["GET", "HEAD", "OPTIONS"].includes(req.method) &&
@@ -46,7 +51,13 @@ export async function createApp(config) {
   });
   let busyAuth = 0;
   app.use(
-    ["/api/register", "/api/recover", "/api/auth/sign-in"],
+    [
+      "/api/register",
+      "/api/recover",
+      "/api/auth/sign-in",
+      "/api/recovery-code",
+      "/api/delete-account",
+    ],
     (req, res, next) => {
       if (busyAuth >= 4)
         return res
@@ -65,9 +76,18 @@ export async function createApp(config) {
       next();
     },
   );
-  app.use(["/api/register", "/api/recover", "/api/auth/sign-in"], accounts);
+  app.use(
+    [
+      "/api/register",
+      "/api/recover",
+      "/api/auth/sign-in",
+      "/api/recovery-code",
+      "/api/delete-account",
+    ],
+    accounts,
+  );
   app.all("/api/auth/*splat", toNodeHandler(auth));
-  app.use(express.json({ limit: "192kb" }));
+  app.use(express.json({ limit: "256kb" }));
   app.get("/api/health", (_, res) =>
     res.json({
       status: "ok",
@@ -84,12 +104,10 @@ export async function createApp(config) {
       password.length < 12 ||
       password.length > 128
     )
-      return res
-        .status(400)
-        .json({
-          error:
-            "Choose a 3–24 character username (letters, numbers, underscores) and a password of 12 or more characters.",
-        });
+      return res.status(400).json({
+        error:
+          "Choose a 3–24 character username (letters, numbers, underscores) and a password of 12 or more characters.",
+      });
     if (
       email &&
       (typeof email !== "string" ||
@@ -112,11 +130,9 @@ export async function createApp(config) {
     });
     const data = await response.json();
     if (!response.ok)
-      return res
-        .status(response.status)
-        .json({
-          error: data.message || "Please choose another username or email.",
-        });
+      return res.status(response.status).json({
+        error: data.message || "Please choose another username or email.",
+      });
     const code = newCode();
     db.prepare("INSERT INTO recovery(user_id,code_hash) VALUES(?,?)").run(
       data.user.id,
@@ -138,12 +154,10 @@ export async function createApp(config) {
       password.length < 12 ||
       password.length > 128
     )
-      return res
-        .status(400)
-        .json({
-          error:
-            "Enter your username, recovery code and a new password (12+ characters).",
-        });
+      return res.status(400).json({
+        error:
+          "Enter your username, recovery code and a new password (12+ characters).",
+      });
     const r = db
       .prepare(
         "SELECT r.*,u.id FROM recovery r JOIN user u ON u.id=r.user_id WHERE u.username=?",
@@ -201,6 +215,23 @@ export async function createApp(config) {
   app.post("/api/attempts/:id/finish", async (req, res) =>
     res.json(await scores.finish(req.player.id, req.params.id, req.body.moves)),
   );
+  app.post("/api/recovery-code", async (req, res) => {
+    try {
+      await auth.api.verifyPassword({
+        body: { password: req.body.password },
+        headers: fromNodeHeaders(req.headers),
+      });
+    } catch {
+      return res.status(400).json({
+        error: "Enter your current password to replace the recovery code.",
+      });
+    }
+    const code = newCode();
+    db.prepare(
+      "INSERT INTO recovery(user_id,code_hash) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET code_hash=excluded.code_hash",
+    ).run(req.player.id, hash(code));
+    res.json({ recoveryCode: code });
+  });
   app.post("/api/delete-account", async (req, res) => {
     try {
       await auth.api.verifyPassword({
@@ -218,17 +249,19 @@ export async function createApp(config) {
     res.json({ ok: true });
   });
   app.use((error, req, res, next) => {
+    if (error.status === 413)
+      return res.status(413).json({ error: "Request is too large." });
+    if (error.type === "entity.parse.failed")
+      return res.status(400).json({ error: "Check the request format." });
     const expected = /Invalid|Unknown|solved|ended|submitted|short|Choose/.test(
       error.message,
     );
     if (!expected) console.error("Request failed:", error.name);
-    res
-      .status(expected ? 400 : 500)
-      .json({
-        error: expected
-          ? error.message
-          : "Could not complete that request. Please try again.",
-      });
+    res.status(expected ? 400 : 500).json({
+      error: expected
+        ? error.message
+        : "Could not complete that request. Please try again.",
+    });
   });
   return { app, db, auth, scores };
 }

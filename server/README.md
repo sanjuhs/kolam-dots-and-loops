@@ -35,7 +35,7 @@ Browser checks require Playwright separately. `CHROME_PATH` can select installed
 
 ## Account recovery
 
-Username is required; email is optional and may also be used to sign in. Every registration creates a 128-bit recovery code, shown once with copy/download controls. Only its SHA-256 hash is stored. Using it changes the password, invalidates existing sessions and replaces the code. Passwords are handled by Better Auth, with a 12-character minimum, no composition rules, and a 128-character maximum. Account deletion requires the current password.
+Username is required; email is optional and may also be used to sign in. Every registration creates a 128-bit recovery code, shown once with copy/download controls. Only its SHA-256 hash is stored. Using it changes the password, invalidates existing sessions and replaces the code. Passwords are handled by Better Auth, with a 12-character minimum, no composition rules, and a 128-character maximum. Account deletion and issuing a replacement recovery code require the current password.
 
 Email reset delivery is enabled only when both `SMTP_URL` and `MAIL_FROM` are configured. No mail sender was assumed or paid for. The UI exposes email recovery only when the API reports it ready. Never install an unauthenticated relay or claim delivery works without testing an actual sender. Username-only accounts always use their recovery code.
 
