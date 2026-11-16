@@ -7,6 +7,8 @@ const vm = require('node:vm');
 const html = readFileSync(new URL('../index.html', `file://${__filename}`), 'utf8');
 const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 const context = vm.createContext({ localStorage: { getItem: () => null } });
+vm.runInContext(readFileSync(`${__dirname}/../motifs.js`, 'utf8'), context);
+vm.runInContext(readFileSync(`${__dirname}/../puzzle-engine.js`, 'utf8'), context);
 vm.runInContext(script.split('/* ---------- drawing ---------- */')[0], context);
 
 test('a built kolam is ready for the solved check before scrambling', () => {

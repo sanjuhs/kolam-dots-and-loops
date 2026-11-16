@@ -35,14 +35,14 @@ await page.evaluate(()=>navigator.serviceWorker.ready);
 await page.reload();await page.waitForFunction(()=>navigator.serviceWorker.controller);
 assert.equal(await page.evaluate(()=>doneSet.has(1)),true);
 for(let i=0;i<10;i++)await page.evaluate(i=>fetch('/?test='+i),i);
-assert.equal(await page.evaluate(async()=>{const c=await caches.open('kolam-v5');return(await c.keys()).length}),8);
+assert.equal(await page.evaluate(async()=>{const c=await caches.open('kolam-v6');return(await c.keys()).length}),11);
 await context.setOffline(true);await page.goto(new URL('/?offline=1',baseURL).href);await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>cur?.n>0);
 await context.setOffline(false);
 assert.equal(symmetry.length,45);assert.deepEqual(errors,[]);
 console.log('PASS mobile UI: play, hint, win, next, levels, gallery, hard picture, mandala');
 console.log('PASS 45 picture configurations generate');
 console.log('PASS audio voices finish and hidden page suspends audio');
-console.log('PASS actual service worker: 8 cache keys after query variants, offline reload and play');
+console.log('PASS actual service worker: 11 cache keys after query variants, offline reload and play');
 console.log('PASS completed levels persist after reload');
 console.log('PASS no browser errors');
 } finally { await browser.close(); }

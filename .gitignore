@@ -1,2 +1,7 @@
 .vercel
 .DS_Store
+node_modules/
+server/data/
+*.sqlite*
+.env*
+!.env.example

@@ -18,6 +18,7 @@ function runtime() {
     setAttribute(k, v) { this.attrs[k] = v; }
     appendChild(c) { this.children.push(c); }
     addEventListener() {}
+    remove() {}
   }
   const elements = new Map();
   const document = { hidden: false, body: new Element(), createElementNS: () => new Element(),
@@ -47,6 +48,7 @@ function runtime() {
     setTimeout: fn => { timers.set(++timerId, fn); return timerId; }, clearTimeout: id => timers.delete(id) });
   context.window = context;
   vm.runInContext(readFileSync(`${__dirname}/../motifs.js`, 'utf8'), context);
+  vm.runInContext(readFileSync(`${__dirname}/../puzzle-engine.js`, 'utf8'), context);
   const html = readFileSync(`${__dirname}/../index.html`, 'utf8');
   vm.runInContext(html.match(/<script>([\s\S]*?)<\/script>/)[1].split('/* ---------- wiring ---------- */')[0], context);
   return { run: code => vm.runInContext(code, context), timers, images };

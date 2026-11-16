@@ -195,7 +195,7 @@ add('marigold','Marigold','Marigolds (genda) are strung into bright garlands for
   return o+C(50,50,4,c[1],.7);
 });
 
-window.MOTIFS=M;
+globalThis.MOTIFS=M;
 
 /* Rangavalli mandala: n-fold symmetry, built so a petal layer crosses every ring boundary. */
 const PALS=[
@@ -205,7 +205,7 @@ const PALS=[
   {bg:'#3a1d6e',bg2:'#17a69b',c:['#f7a1c0','#8a55c9','#ffd54a','#e8457a']},
   {bg:'#0f4c5c',bg2:'#f26b21',c:['#ffd54a','#17a69b','#e8457a','#fff1c9']},
   {bg:'#5a1f12',bg2:'#ffd54a',c:['#f26b21','#d92b2b','#fff1c9','#4caf50']}];
-window.mandalaArt=(n,k,rng)=>{
+globalThis.mandalaArt=(n,k,rng)=>{
   const pal=pick(rng,PALS),w=46/k,cols=pal.c;let ci=Math.floor(rng()*cols.length),o='';
   const col=()=>cols[ci++%cols.length];
   const rim=pick(rng,['diya','scallop','bud','diya']),half=180/n;
@@ -229,5 +229,21 @@ window.mandalaArt=(n,k,rng)=>{
   const rc=Math.min(6.5,w*.5);
   o+=C(50,50,rc,K.gold)+ring(n,D(50,50-rc*.62,Math.min(.7,rc*.14),K.brown))+D(50,50,rc*.22,K.red);
   return o;
+};
+// Additional geometric families, with layers crossing ring boundaries.
+globalThis.patternArt=(style,n,k,rng)=>{
+  const pal=pick(rng,PALS),cols=pal.c;let o=C(50,50,46,pal.bg,.4);
+  for(let j=k;j>=1;j--){
+    const r=43*j/k,inner=Math.max(1,r-70/k),c=cols[j%cols.length],half=180/n;
+    let motif;
+    if(style==='star')motif=P(`M50 ${50-r}L${50+26/n} ${50-inner}L50 ${50-inner-5}L${50-26/n} ${50-inner}Z`,c,.55);
+    else if(style==='lace')motif=L(`M50 ${50-r}C${50+60/n} ${50-r+3} ${50+75/n} ${50-inner+4} 50 ${50-inner}C${50-75/n} ${50-inner+4} ${50-60/n} ${50-r+3} 50 ${50-r}Z`,c,.85)+D(50,50-r,.65);
+    else if(style==='spiral')motif=L(`M50 ${50-r}C${50+100/n} ${50-r+4} ${50-65/n} ${50-inner-4} 50 ${50-inner}`,c,2)+D(50,50-r,.8);
+    else if(style==='jewel')motif=P(`M50 ${50-r}L${50+65/n} ${50-(r+inner)/2}L50 ${50-inner}L${50-65/n} ${50-(r+inner)/2}Z`,c,.7)+D(50,50-(r+inner)/2,1,pal.bg2);
+    else if(style==='wheel')motif=P(petal(inner,r,40/n),c,.55)+L(`M50 ${50-r}L50 ${50-inner}`,pal.bg2,.7);
+    else motif=P(petal(inner,r,90/n),c,.6)+P(petal(inner+2,r-2,36/n),cols[(j+1)%cols.length],.4);
+    o+=ring(n,motif,(j%2)*half)+ring(n,D(50,50-r,.5),half);
+  }
+  return o+C(50,50,2.2,K.gold,.4)+D(50,50,.7);
 };
 })();

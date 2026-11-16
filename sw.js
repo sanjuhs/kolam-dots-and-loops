@@ -1,6 +1,6 @@
 // Offline support: try the network first, fall back to the cached copy.
-const CACHE = 'kolam-v5';
-const FILES = ['./', 'index.html', 'motifs.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
+const CACHE = 'kolam-v6';
+const FILES = ['./', 'index.html', 'motifs.js', 'puzzle-engine.js', 'picture-symmetries.js', 'community.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-180.png'];
 const ROOT = new URL('./', self.location.href);
 const ASSETS = new Set(FILES.map(f => new URL(f, ROOT).href));
 self.addEventListener('install', e => {

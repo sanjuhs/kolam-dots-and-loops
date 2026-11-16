@@ -105,6 +105,18 @@ details.chapd[open]{padding-bottom:14px}
 .about p{color:var(--ink);line-height:1.6;font-size:1.02rem}
 .about h2{margin-top:22px;font-size:1.4rem}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+#playStats{display:flex;align-items:center;justify-content:center;gap:12px;padding:6px;font-size:.85rem;color:var(--ink)}
+#playStats button{padding:3px 14px;min-height:40px;font-size:1.2rem}#puzzleTimer{font-variant-numeric:tabular-nums}
+#scoreNote{font-size:.8rem;color:var(--ink)}#foot{min-height:110px}
+#boardWrap.zoomed{display:block;overflow:auto;touch-action:pan-x pan-y}#boardWrap.zoomed svg{max-width:none;display:block;flex:none}
+.stripBorder{fill:none;stroke:var(--chalk);stroke-opacity:.5;stroke-width:.3;pointer-events:none}
+.packOptions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.card .sz{flex-wrap:wrap}
+label{display:block;line-height:1.5}input,select{font:inherit;font-size:16px;color:#4a1a0e;background:var(--chalk);border:1px solid var(--gold);border-radius:10px;padding:12px;min-height:48px;max-width:100%}select{margin:8px}
+.accountContent{max-width:560px;padding-top:22px}.accountForm{display:grid;gap:14px;margin:20px 0}.accountForm[hidden],[hidden]{display:none!important}.accountForm input{display:block;width:100%;user-select:text;-webkit-user-select:text}
+.formHelp{margin:-6px 0 0;font-size:.85rem;color:var(--ink);line-height:1.5}.accountContent h2{font-size:1.7rem}.accountContent button{min-height:44px;margin:3px 0}.accountContent details{margin:26px 0}.accountContent summary{cursor:pointer;padding:10px 0}
+#recoveryBox{background:rgba(0,0,0,.18);padding:18px;border-radius:18px;margin-top:18px}#recoveryCode{display:block;word-break:break-all;user-select:text;-webkit-user-select:text;font-family:monospace;background:var(--chalk);color:#4a1a0e;padding:14px;font-size:1.1rem;border-radius:10px}#downloadRecovery{color:var(--chalk);padding:12px}
+.leaderRows{list-style:none;padding:0}.leaderRows li{display:flex;justify-content:space-between;gap:12px;padding:15px 4px;border-bottom:1px solid rgba(255,246,230,.2)}.leaderRows span{font-size:.9rem;color:var(--ink)}
+#home{overflow-y:auto}@media(max-height:720px){#homeArt{height:22vh;width:22vh}#home{gap:10px;justify-content:flex-start}}
 </style>
 </head>
 <body>
@@ -118,6 +130,7 @@ details.chapd[open]{padding-bottom:14px}
     <button id="levelsBtn">All levels</button>
     <button id="galBtn">Rangoli gallery</button>
     <button id="aboutBtn">What is a kolam?</button>
+    <button id="dailyBtn">Daily puzzle</button><button id="accountBtn">Sign in / save progress</button><button id="leaderBtn">Leaderboard</button>
   </div>
   <div class="free">Free forever · no ads · works offline</div>
 </section>
@@ -129,9 +142,10 @@ details.chapd[open]{padding-bottom:14px}
     <button id="hintBtn">Hint</button>
     <button id="soundBtn" aria-label="Sound">♪</button>
   </div>
+  <div id="playStats"><span id="puzzleTimer">0:00</span><span id="moveCount">0 turns · 0 hints</span><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
   <div id="boardWrap"><svg id="board" class="kolam"></svg></div>
   <div id="foot">
-    <div id="tip"></div>
+    <div id="tip"></div><div id="scoreNote" role="status"></div>
     <div id="winBox"><div class="serif" id="winMsg">Beautiful!</div><div id="winNote"></div><button class="primary" id="nextBtn">Next kolam ›</button></div>
   </div>
 </section>
@@ -143,7 +157,7 @@ details.chapd[open]{padding-bottom:14px}
 
 <section id="gallery" class="screen">
   <div class="bar"><button data-go="home">‹ Home</button><div class="mid"><b class="serif">Rangoli gallery</b><span>pick a picture</span></div><span style="width:70px"></span></div>
-  <div class="scroll"><p class="lead">Each rangoli is cut into tiles and turned around. Tap the tiles to bring the picture back. Choose how many tiles you want.</p><div class="gal" id="galList"></div><h2 class="galh">Rangavalli mandalas</h2><p class="lead">Round designs that repeat around the centre. Tap a ring to turn it until the petals line up.</p><div class="gal" id="manList"></div></div>
+  <div class="scroll"><p class="lead">Each rangoli is cut into tiles and turned around. Tap the tiles to bring the picture back. Choose how many tiles you want.</p><div class="gal" id="galList"></div><h2 class="galh">Rangavalli mandalas</h2><p class="lead">Round designs that repeat around the centre. Tap a ring to turn it until the petals line up.</p><div class="gal" id="manList"></div><h2 class="galh">Mandala collections</h2><p class="lead">Six new families, from gentle petals to 24-fold designs with twelve rings.</p><div class="gal" id="packList"></div><h2 class="galh">Grand pictures &amp; rolling strips</h2><p class="lead">Choose up to 144 tiles, or roll rows and columns to join the picture. Use + to zoom in on larger puzzles.</p><label>Picture <select id="grandMotif"></select></label><div class="packOptions"><button data-grand="8">8 × 8</button><button data-grand="10">10 × 10</button><button data-grand="12">12 × 12</button><button data-roll="h">Roll rows</button><button data-roll="v">Roll columns</button></div><label>Rolling size <select id="rollSize"><option value="6">6 strips</option><option value="10">10 strips</option><option value="12">12 strips</option></select></label></div>
 </section>
 
 <section id="about" class="screen">
@@ -159,164 +173,23 @@ details.chapd[open]{padding-bottom:14px}
     <p>Rangoli is also made with coloured powder and flower petals: lotuses, peacocks, lamps for Diwali, flower carpets for Onam. Levels marked ❀ are pictures like these, cut into tiles. <b>Tap a tile to turn it</b> until the picture comes back. You can find them all in the Rangoli gallery.</p>
     <h2>Rangavalli mandalas</h2>
     <p>The word <b>rangavalli</b> comes from Sanskrit: <i>ranga</i> means colour, and <i>āvali</i> means a row or line, the same ending as in Deepavali, "a row of lamps". Some read it as <i>valli</i>, a creeper, for the vine-like lines. Many rangavalli are round, with one petal repeated six, eight or twelve times around the centre. Levels marked ✺ are mandalas like these, made of rings. <b>Tap a ring to turn it</b> until the petals line up all the way round.</p>
-    <h2>Try it on paper</h2>
+    <h2>New ways to play</h2><p>Explore the gallery for six mandala collections, grand pictures up to 144 tiles, and rolling rows or columns. Tap a rolling strip to wrap it around; Reverse rolls the last strip back. Use + and − to zoom larger puzzles.</p><h2>Your progress and privacy</h2><p>Guest play stays on this phone. A free account saves completed puzzles across devices. Your username, ranked scores and times are public on the leaderboard; your email is private. Passwords are hashed by the account service. Save your recovery code to recover access. You can delete your account and cloud data in account settings.</p><p>Hints reduce difficulty points. Fastest times require no hints and use elapsed time, including time while the game is in the background. Each puzzle contributes your best score, so replaying can improve it. Guest and offline progress can be saved without awarding timed leaderboard scores.</p><h2>Try it on paper</h2>
     <p>Draw the dots first, then copy the finished line around them without lifting your pencil. Symmetry is the secret: whatever you draw on one side, mirror on the other.</p>
   </div>
 </section>
 
 <script src="motifs.js"></script>
+<script src="picture-symmetries.js"></script>
+<script src="puzzle-engine.js"></script>
+<script src="community.js"></script>
 <script>
 'use strict';
+const {CHAPTERS,chapterOf,PAL,mulberry32,build,conn,tileOk,off,solved,generate,isPic,picSize,isMan,FOLDS,makeMandala,PACKS,makePack,makeRoll,puzzleFor,puzzleKey}=Puzzles;
 /* ---------- storage ---------- */
 const store={done:[],sound:true};
 try{Object.assign(store,JSON.parse(localStorage.getItem('kolam.v1')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('kolam.v1',JSON.stringify(store))}catch(e){}};
 const doneSet=new Set(store.done);
-
-/* ---------- chapters ---------- */
-const CHAPTERS=[
-  {name:'Bud',from:1,to:20,note:'a few dots',g:['#8a3420','#541c10']},
-  {name:'Blossom',from:21,to:50,note:'small kolams',g:['#274079','#141f45']},
-  {name:'Lotus',from:51,to:90,note:'five and six dots wide',g:['#1c5a4c','#0d3029']},
-  {name:'Lamp',from:91,to:140,note:'bigger weaves',g:['#6a2a63','#341232']},
-  {name:'Festival',from:141,to:200,note:'grand designs',g:['#7a2b3b','#3a101b']},
-  {name:'Peacock',from:201,to:400,note:'seven to nine dots wide',g:['#15506b','#0a2a3a']},
-  {name:'Temple',from:401,to:700,note:'eight to ten dots wide',g:['#7a4a1c','#3d230b']},
-  {name:'Monsoon',from:701,to:1000,note:'wide, flowing weaves',g:['#2b4a6e','#12233a']},
-  {name:'Harvest',from:1001,to:1400,note:'for patient hands',g:['#5c5a1e','#2c2b0c']},
-  {name:'Starlight',from:1401,to:2000,note:'the most intricate',g:['#3a2a66','#1a1233']},
-  {name:'Endless',from:2001,to:Infinity,note:'new kolams forever',g:['#2c3140','#14161d']}
-];
-const chapterOf=L=>CHAPTERS.find(c=>L>=c.from&&L<=c.to);
-const PAL=['#f6a400','#e8457a','#17a69b','#8a55c9','#f26b21','#4caf50','#e53935','#2f8fe0'];
-
-/* ---------- level generation ---------- */
-function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const I=[1,0,0,1];
-const OPS={
-  D4:[I,[0,-1,1,0],[-1,0,0,-1],[0,1,-1,0],[-1,0,0,1],[1,0,0,-1],[0,1,1,0],[0,-1,-1,0]],
-  C4:[I,[0,-1,1,0],[-1,0,0,-1],[0,1,-1,0]],
-  D2:[I,[-1,0,0,1],[1,0,0,-1],[-1,0,0,-1]],
-  C2:[I,[-1,0,0,-1]],
-  M:[I,[-1,0,0,1]]
-};
-const FEATURED=[['diamond',3,'all'],['square',3,'all'],['diamond',5,'all'],['square',4,'rings'],['square',5,'spokes'],
-  ['octagon',5,'all'],['diamond',7,'all'],['square',6,'rings'],['square',5,'all'],['diamond',9,'all'],
-  ['square',7,'spokes'],['octagon',7,'all'],['square',7,'rings'],['diamond',11,'all'],['square',8,'rings'],
-  ['square',9,'spokes'],['octagon',9,'all'],['square',8,'all'],['square',9,'rings'],['diamond',11,'all']];
-
-function spec(L,rng){
-  const pick=a=>a[Math.floor(rng()*a.length)];
-  if(L===1)return{w:2,h:1,shape:'square',rule:'all'};
-  if(L===2)return{w:3,h:1,shape:'square',rule:'all'};
-  if(L===3)return{w:2,h:2,shape:'square',rule:'all'};
-  if(L%10===0){
-    const k=L/10-1,f=k<FEATURED.length?FEATURED[k]:FEATURED[14+k%6];
-    return{w:f[1],h:f[1],shape:f[0],rule:f[2],star:true};
-  }
-  if(L<=9){const d=pick([[3,2],[2,3],[4,1],[2,2],[4,2],[3,2]]);return{w:d[0],h:d[1],shape:'square',p:.6}}
-  if(L<=20){const d=pick([[3,3,'square'],[3,3,'diamond'],[4,2,'square'],[4,3,'square'],[3,4,'square'],[3,3,'square']]);
-    return{w:d[0],h:d[1],shape:d[2],p:.62}}
-  const ch=chapterOf(L);
-  const R={Blossom:[4,5],Lotus:[5,6],Lamp:[6,7],Festival:[8,9],Peacock:[7,9],Temple:[8,10],Monsoon:[8,11],Harvest:[9,11],Starlight:[9,11],Endless:[9,11]}[ch.name];
-  const t=ch.to===Infinity?.5:(L-ch.from)/(ch.to-ch.from);
-  let n=R[0]+Math.min(R[1]-R[0],Math.floor((rng()*.8+t*.6)*(R[1]-R[0]+1)));
-  const shapes=['square','square'];
-  if(n>=5)shapes.push('octagon','ring','diamond');
-  if(n>=6)shapes.push('cross');
-  let shape=pick(shapes);
-  if(shape==='diamond')n=Math.min(11,(n%2?n:n+1)+2);
-  return{w:n,h:n,shape,p:.55+rng()*.25};
-}
-
-function inShape(shape,x,y,w,h){
-  const X=Math.abs(2*x-(w-1))/2,Y=Math.abs(2*y-(h-1))/2,c=(w-1)/2,n=w;
-  switch(shape){
-    case'diamond':return X+Y<=c+.01;
-    case'octagon':return X+Y<=c+Math.floor(c/2)+.01;
-    case'cross':return Math.min(X,Y)<=n/4-.5+.01;
-    case'ring':return Math.max(X,Y)>=n/6;
-    default:return true;
-  }
-}
-
-function build(sp,rng,strict){
-  const{w,h}=sp,cells=new Map(),id=(x,y)=>y*w+x;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(inShape(sp.shape,x,y,w,h))cells.set(id(x,y),{x,y,mask:0,rot:0});
-  const ekey=(a,b)=>Math.min(a,b)+'_'+Math.max(a,b);
-  const edges=[];
-  for(const[i,c]of cells){
-    if(c.x+1<w&&cells.has(i+1))edges.push([i,i+1]);
-    if(c.y+1<h&&cells.has(i+w))edges.push([i,i+w]);
-  }
-  const groups=w===h?['D4','D4','C4','D2','D2','M']:['D2','D2','M','C2'];
-  const ops=OPS[groups[Math.floor(rng()*groups.length)]];
-  const tf=(i,o)=>{const c=cells.get(i),X=2*c.x-(w-1),Y=2*c.y-(h-1);
-    return id((o[0]*X+o[1]*Y+(w-1))/2,(o[2]*X+o[3]*Y+(h-1))/2)};
-  const orbitOf=new Map(),orbits=[];
-  for(const[a,b]of edges){
-    if(orbitOf.has(ekey(a,b)))continue;
-    const o={keys:new Set(),on:false};
-    for(const op of ops){const k=ekey(tf(a,op),tf(b,op));o.keys.add(k);orbitOf.set(k,o)}
-    orbits.push(o);
-  }
-  const cheb=i=>{const c=cells.get(i);return Math.max(Math.abs(2*c.x-(w-1)),Math.abs(2*c.y-(h-1)))};
-  const onAxis=i=>{const c=cells.get(i);return 2*c.x===w-1||2*c.y===h-1};
-  const on=new Set();
-  if(sp.rule){
-    for(const[a,b]of edges){
-      if(sp.rule==='all'||cheb(a)===cheb(b)||(sp.rule==='spokes'&&onAxis(a)&&onAxis(b)&&(cells.get(a).x===cells.get(b).x?2*cells.get(a).x===w-1:2*cells.get(a).y===h-1)))on.add(ekey(a,b));
-    }
-  }else{
-    for(const o of orbits)o.on=rng()<sp.p;
-    const deg=new Map();
-    const recount=()=>{deg.clear();for(const[a,b]of edges)if(orbitOf.get(ekey(a,b)).on){deg.set(a,(deg.get(a)||0)+1);deg.set(b,(deg.get(b)||0)+1)}};
-    for(let guard=0;guard<200;guard++){
-      recount();
-      const lonely=edges.filter(([a,b])=>!deg.get(a)||!deg.get(b));
-      if(!lonely.length)break;
-      const e=lonely[Math.floor(rng()*lonely.length)];orbitOf.get(ekey(e[0],e[1])).on=true;
-    }
-    if(strict&&orbits.length>1&&orbits.every(o=>o.on))return null;
-    for(const[a,b]of edges)if(orbitOf.get(ekey(a,b)).on)on.add(ekey(a,b));
-  }
-  const manh=sp.shape==='diamond'||(!sp.rule&&rng()<.35),off=Math.floor(rng()*PAL.length);
-  let turnable=0;
-  for(const[i,c]of cells){
-    const nb=[i-w,c.x+1<w?i+1:-1,i+w,c.x>0?i-1:-1];
-    nb.forEach((j,d)=>{if(j>=0&&cells.has(j)&&on.has(ekey(i,j)))c.mask|=1<<d});
-    const m=c.mask,bits=(m&1)+(m>>1&1)+(m>>2&1)+(m>>3&1);
-    c.sym=bits===0||bits===4?1:(m===5||m===10?2:4);
-    if(c.sym>1)turnable++;
-    const X=Math.abs(2*c.x-(w-1)),Y=Math.abs(2*c.y-(h-1));
-    c.ring=Math.round((manh?X+Y:Math.max(X,Y))/2);
-    c.color=PAL[(c.ring+off)%PAL.length];
-  }
-  if(turnable<1)return null;
-  return{kind:'kolam',w,h,cells,tiles:[...cells.values()],star:!!sp.star,id};
-}
-
-function conn(c,d){return c.mask>>(((d-c.rot)%4+4)%4)&1}
-const DX=[0,1,0,-1],DY=[-1,0,1,0];
-function neighbour(lv,c,d){const x=c.x+DX[d],y=c.y+DY[d];if(x<0||y<0||x>=lv.w||y>=lv.h)return null;return lv.cells.get(lv.id(x,y))||null}
-function tileOk(lv,c){for(let d=0;d<4;d++){const n=neighbour(lv,c,d),a=conn(c,d);if(n?a!==conn(n,(d+2)%4):a)return false}return true}
-const off=(lv,c)=>lv.kind==='man'?(((c.rot-lv.tiles[lv.tiles.length-1].rot)%c.sym)+c.sym)%c.sym:c.rot%c.sym;
-function solved(lv){if(lv.kind!=='kolam')return lv.tiles.every(c=>off(lv,c)===0);for(const c of lv.cells.values())if(!tileOk(lv,c))return false;return true}
-
-function generate(L){
-  for(let attempt=0;;attempt++){
-    const rng=mulberry32(L*7919+attempt*104729+17);
-    const lv=build(spec(L,rng),rng,attempt<6);
-    if(!lv)continue;
-    const turn=[...lv.cells.values()].filter(c=>c.sym>1);
-    for(let tries=0;tries<50;tries++){
-      for(const c of turn)c.rot=Math.floor(rng()*4);
-      if(!solved(lv)&&turn.filter(c=>c.rot%c.sym).length>=Math.min(2,turn.length))break;
-    }
-    if(solved(lv))turn[0].rot=1;
-    lv.n=L;return lv;
-  }
-}
 
 /* ---------- drawing ---------- */
 const NS='http://www.w3.org/2000/svg';
@@ -343,8 +216,6 @@ function draw(lv,svg,onTap){
 }
 
 /* ---------- picture (rangoli) levels ---------- */
-const isPic=L=>L%10===5;
-const picSize=L=>L<=20?2:L<=50?3:L<=140?4:L<=400?5:(L%20===5?5:6);
 const artURL=(art,box='0 0 100 100',size=100)=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="${box}">${art}</svg>`);
 // A shared image keeps each tile from cloning hundreds of SVG paths into a use shadow tree.
 function artImage(art,id){return el('image',{id,width:100,height:100,href:artURL(art)})}
@@ -370,18 +241,7 @@ function tileSyms(art,n,signal){return new Promise(res=>{
   if(signal)signal.addEventListener('abort',fail,{once:true});
   img.src=artURL(art,undefined,S);
 })}
-async function makePic(mi,n,seed,signal){
-  const m=MOTIFS[mi],rng=mulberry32(seed*2654435761+n),art=m.draw(rng);
-  const syms=await tileSyms(art,n,signal),tiles=[];
-  for(let y=0;y<n;y++)for(let x=0;x<n;x++)tiles.push({x,y,rot:0,sym:syms[y*n+x]});
-  const turn=tiles.filter(c=>c.sym>1);
-  for(let tries=0;tries<50;tries++){
-    for(const c of turn)c.rot=Math.floor(rng()*4);
-    if(turn.filter(c=>c.rot%c.sym).length>=Math.min(turn.length,Math.max(2,turn.length*.6)))break;
-  }
-  if(turn.length&&turn.every(c=>c.rot%c.sym===0))turn[0].rot=1;
-  return{kind:'pic',size:n,tiles,art,motif:m,mi,title:m.name,sub:n+'×'+n,note:m.note,link:'g-'+m.id+'-'+n};
-}
+const makePic=(mi,n,seed,signal)=>Puzzles.makePic(mi,n,seed,tileSyms,signal);
 function drawPic(lv,svg,onTap){
   svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
   const n=lv.size,s=100/n,aid='art-'+svg.id;
@@ -400,20 +260,6 @@ function drawPic(lv,svg,onTap){
 }
 
 /* ---------- mandala (rangavalli) levels ---------- */
-const isMan=L=>L%10===8;
-const FOLDS=[5,6,7,8,9,10,12,16];
-function makeMandala(n,k,S,seed){
-  const rng=mulberry32(seed*40503+n*131+k),art=mandalaArt(n,k,rng),tiles=[];
-  for(let i=0;i<k;i++)tiles.push({i,x:i,y:0,rot:0,sym:S,step:360/(n*S)});
-  const lv={kind:'man',tiles,art,fold:n,title:n+'-fold mandala',sub:k+' rings',link:'m-'+n+'-'+k,
-    note:`This rangavalli has ${n}-fold symmetry: the same petal repeats ${n} times around the centre.`};
-  for(let tries=0;tries<60;tries++){
-    for(const c of tiles)c.rot=Math.floor(rng()*S);
-    if(tiles.filter(c=>off(lv,c)).length>=Math.max(1,Math.ceil((k-1)*.6)))break;
-  }
-  if(solved(lv))tiles[0].rot++;
-  return lv;
-}
 function drawMandala(lv,svg,onTap){
   svg.innerHTML='';svg.setAttribute('viewBox','-4 -4 108 108');
   const k=lv.tiles.length,aid='art-'+svg.id,circ=r=>`M50 ${50-r}A${r} ${r} 0 1 1 49.99 ${50-r}Z`;
@@ -467,8 +313,8 @@ const TIPS={1:'Tap a piece to turn it.',2:'Make every line meet its neighbour.',
 const PRAISE=['Beautiful!','Lovely!','So pretty!','Wonderful!','Well done!','Perfect!'];
 
 function show(name){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===name));
-  if(name!=='game'){++loadToken;cancelPicture();clearLevelEffects();board.innerHTML='';cur=null;won=false}
-  if(name==='levels')renderLevels();if(name==='gallery')renderGallery();
+  if(name!=='game'){window.kolamCommunity?.leave();++loadToken;cancelPicture();clearLevelEffects();$('reverseStrip')?.remove();board.onpointerdown=null;board.innerHTML='';cur=null;won=false}
+  if(name==='levels')renderLevels();if(name==='gallery'){renderGallery();renderPacks()};
   if(name!=='game'){setTheme(CHAPTERS[0]);history.replaceState(null,'',location.pathname)}}
 function setTheme(ch){document.body.style.setProperty('--g1',ch.g[0]);document.body.style.setProperty('--g2',ch.g[1]);
   document.querySelector('meta[name=theme-color]').content=ch.g[1]}
@@ -483,19 +329,20 @@ function requestPicture(mi,n,seed,L){
   makePic(mi,n,seed,controller.signal).then(lv=>{if(tk!==loadToken)return;pictureAbort=null;if(L)lv.n=L;begin(lv)});
 }
 function begin(lv){
-  clearLevelEffects();
-  cur=lv;won=false;
+  clearLevelEffects();$('reverseStrip')?.remove();board.onpointerdown=null;
+  cur=lv;won=false;setZoom(1);
   const L=lv.n,ch=L?chapterOf(L):CHAPTERS[0];setTheme(ch);
   const k=lv.kind;
   $('lvTitle').textContent=L?'Level '+L+(lv.star?' ✦':k==='pic'?' ❀':k==='man'?' ✺':''):lv.title;
   $('lvChap').textContent=L?ch.name:'Gallery · '+lv.sub;
   $('backBtn').textContent=L?'‹ Levels':'‹ Gallery';
-  $('tip').textContent=k==='pic'?(L===5?'A rangoli picture! Tap the tiles to turn them back.':lv.title+' · turn the tiles to bring it back.'):
+  $('tip').textContent=k==='roll'?'Tap a strip to roll it. Use Reverse to roll the other way.':k==='pic'?(L===5?'A rangoli picture! Tap the tiles to turn them back.':lv.title+' · turn the tiles to bring it back.'):
     k==='man'?(L===8?'A mandala! Tap a ring to turn it. Line up the petals.':'Tap a ring to turn it. Line up the petals.'):(TIPS[L]||(lv.star?'✦ A classic shape.':''));
   $('tip').style.display='';
   $('winBox').classList.remove('on');board.classList.remove('won');$('hintBtn').disabled=false;
   $('nextBtn').textContent=L?'Next ›':'Next ›';
-  (k==='pic'?drawPic:k==='man'?drawMandala:draw)(lv,board,tap);
+  (k==='roll'?drawRoll:k==='pic'?drawPic:k==='man'?drawMandala:draw)(lv,board,tap);
+  window.kolamCommunity?.start(lv);
   refresh();show('game');
   history.replaceState(null,'','#'+(L||lv.link));
 }
@@ -509,16 +356,18 @@ function load(L){
 }
 function loadGallery(mi,n){requestPicture(mi,n,1000+mi)}
 function loadMandala(n,k){startLoad();begin(makeMandala(n,k,k>=5?4:3,500+n))}
+function loadPuzzleKey(key){const tk=startLoad(),controller=new AbortController();pictureAbort=controller;puzzleFor(key,(art,n)=>tileSyms(art,n,controller.signal)).then(lv=>{if(tk!==loadToken)return;pictureAbort=null;begin(lv)}).catch(()=>{if(tk===loadToken)show('gallery')})}
 function tap(c){
   if(won)return;
   if(c.sym===1){note(SCALE[(c.x+c.y)%6]-12,0,.15,.05);return}
-  c.rot++;c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
+  window.kolamCommunity?.record(cur.tiles.indexOf(c),'tap');
+  c.rot++;if(cur.kind==='roll'){refreshRoll(cur,c)}else c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
   note(SCALE[(c.x+c.y*2)%SCALE.length],0,.5,.11);
   refresh();
   if(solved(cur))win();
 }
 function win(){
-  won=true;if(cur.n){doneSet.add(cur.n);store.done=[...doneSet];save()}
+  won=true;window.kolamCommunity?.complete();if(cur.n){doneSet.add(cur.n);store.done=[...doneSet];save()}
   $('hintBtn').disabled=true;
   later(()=>{
     board.classList.add('won');
@@ -531,7 +380,8 @@ function hint(){
   const wrong=cur.tiles.filter(c=>off(cur,c));
   if(!wrong.length)return;
   const c=wrong[Math.floor(Math.random()*wrong.length)];
-  c.rot+=c.sym-off(cur,c);c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
+  window.kolamCommunity?.record(cur.tiles.indexOf(c),'hint');
+  c.rot+=c.sym-off(cur,c);if(cur.kind==='roll'){refreshRoll(cur,c)}else c.r.style.transform=`rotate(${c.rot*(c.step||90)}deg)`;
   c.g.classList.add('hinted');later(()=>c.g.classList.remove('hinted'),1400);
   note(7,0,.6,.1);refresh();if(solved(cur))win();
 }
@@ -582,27 +432,61 @@ function renderGallery(){
   });
 }
 
+function renderPacks(){
+ const list=$('packList');if(list.children.length)return;
+ for(const [style,title] of PACKS){const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<img loading="lazy" alt="${title}" src="${artURL(patternArt(style,12,6,mulberry32(31)))}"><b class="serif">${title}</b><div class="sz"></div>`;
+  for(const [label,n,k] of [['Gentle',8,4],['Grand',16,8],['Master',24,12]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>loadPuzzleKey(`p-${style}-${n}-${k}`);card.querySelector('.sz').appendChild(b)}list.appendChild(card);
+ }
+ MOTIFS.forEach((m,i)=>{const o=document.createElement('option');o.value=i;o.textContent=m.name;$('grandMotif').appendChild(o)});
+ document.querySelectorAll('[data-grand]').forEach(b=>b.onclick=()=>loadPuzzleKey(`g-${MOTIFS[+$('grandMotif').value].id}-${b.dataset.grand}`));
+ document.querySelectorAll('[data-roll]').forEach(b=>b.onclick=()=>loadPuzzleKey(`r-${MOTIFS[+$('grandMotif').value].id}-${$('rollSize').value}-${b.dataset.roll}`));
+}
+let zoom=1;
+function setZoom(value){zoom=Math.max(1,Math.min(3,value));$('boardWrap').classList.toggle('zoomed',zoom>1);board.style.width=zoom>1?`${zoom*100}%`:'';board.style.height=zoom>1?`${zoom*100}%`:''}
+function drawRoll(lv,svg,onTap){
+ svg.innerHTML='';svg.setAttribute('viewBox','-2 -2 104 104');const defs=el('defs',{},svg),aid='art-'+svg.id;defs.appendChild(artImage(lv.art,aid));const n=lv.size,s=100/n;
+ for(const c of lv.tiles){const g=el('g',{class:'tile'},svg);c.g=g;c.windows=[];
+  for(let j=0;j<n;j++){const x=lv.axis==='h'?j:c.i,y=lv.axis==='h'?c.i:j;
+   const inner=el('svg',{x:x*s,y:y*s,width:s,height:s},g);el('use',{href:'#'+aid},inner);c.windows.push(inner);
+  }
+  el('rect',{class:'stripBorder',x:lv.axis==='h'?0:c.i*s,y:lv.axis==='h'?c.i*s:0,width:lv.axis==='h'?100:s,height:lv.axis==='h'?s:100},g);
+  g.addEventListener('pointerdown',e=>{e.preventDefault();tap(c)});refreshRoll(lv,c);
+ }
+ let last=lv.tiles[0];svg.onpointerdown=e=>{const tile=e.target.closest('.tile');if(tile)last=lv.tiles.find(c=>c.g===tile)||last};
+ const reverse=document.createElement('button');reverse.textContent='Reverse last strip';reverse.id='reverseStrip';reverse.onclick=()=>{if(won)return;window.kolamCommunity?.record(last.i,'back');last.rot=(last.rot-1+n)%n;refreshRoll(lv,last);if(solved(lv))win()};$('foot').appendChild(reverse);
+}
+function refreshRoll(lv,c){const n=lv.size,s=100/n,shift=((c.rot%n)+n)%n;c.windows.forEach((w,j)=>{const source=(j-shift+n)%n;w.setAttribute('viewBox',`${(lv.axis==='h'?source:c.i)*s} ${(lv.axis==='h'?c.i:source)*s} ${s} ${s}`)})}
+
 /* ---------- wiring ---------- */
+$('zoomIn').onclick=()=>setZoom(zoom+.5);$('zoomOut').onclick=()=>setZoom(zoom-.5);
 $('playBtn').onclick=()=>load(nextUndone());
 $('levelsBtn').onclick=()=>show('levels');
 $('aboutBtn').onclick=()=>show('about');
 $('backBtn').onclick=()=>show(cur&&!cur.n?'gallery':'levels');
 $('galBtn').onclick=()=>show('gallery');
-$('nextBtn').onclick=()=>cur.n?load(cur.n+1):cur.kind==='man'?loadMandala(FOLDS[(FOLDS.indexOf(cur.fold)+1)%FOLDS.length],cur.tiles.length):loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
+$('nextBtn').onclick=()=>{
+ if(cur.n){load(cur.n+1);return}
+ if(cur.kind==='roll'){loadPuzzleKey(`r-${MOTIFS[(cur.mi+1)%MOTIFS.length].id}-${cur.size}-${cur.axis}`);return}
+ if(cur.link?.startsWith('p-')){const next=(PACKS.findIndex(p=>p[1]===cur.title)+1)%PACKS.length;loadPuzzleKey(`p-${PACKS[next][0]}-${cur.fold}-${cur.tiles.length}`);return}
+ if(cur.kind==='man'){loadMandala(FOLDS[(FOLDS.indexOf(cur.fold)+1)%FOLDS.length],cur.tiles.length);return}
+ loadGallery((cur.mi+1)%MOTIFS.length,cur.size);
+};
 $('hintBtn').onclick=hint;
 const soundUI=()=>{$('soundBtn').style.opacity=store.sound?1:.45;$('soundBtn').textContent=store.sound?'♪':'♪̸'};
 $('soundBtn').onclick=()=>{store.sound=!store.sound;save();soundUI();if(!store.sound)stopAudio();else note(7,0,.4,.1)};soundUI();
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAudio()});
 document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>show(b.dataset.go));
 
+window.kolamCommunity=KolamCommunity.setup({show,load,loadPuzzleKey,store,doneSet,save,puzzleKey});
 (function homeArt(){
   const rng=mulberry32(5),lv=build({w:7,h:7,shape:'diamond',rule:'all'},rng);
   draw(lv,$('homeArt'),null);
 })();
 (function deepLink(){
-  const h=location.hash.slice(1),g=h.match(/^g-([a-z]+)-(\d)$/);
-  if(g){const mi=MOTIFS.findIndex(m=>m.id===g[1]);if(mi>=0)return loadGallery(mi,Math.min(6,Math.max(2,+g[2])))}
-  const m=h.match(/^m-(\d+)-(\d)$/);if(m&&FOLDS.includes(+m[1]))return loadMandala(+m[1],Math.min(6,Math.max(2,+m[2])));
+  const h=location.hash.slice(1);if(/^[pr]-/.test(h))return loadPuzzleKey(h);const g=h.match(/^g-([a-z]+)-(\d+)$/);
+  if(g){const mi=MOTIFS.findIndex(m=>m.id===g[1]);if(mi>=0)return loadGallery(mi,Math.min(12,Math.max(2,+g[2])))}
+  const m=h.match(/^m-(\d+)-(\d)$/);if(m&&FOLDS.includes(+m[1]))return loadMandala(+m[1],Math.min(12,Math.max(2,+m[2])));
   const L=parseInt(h,10);if(L>0)load(L);
 })();
 if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});

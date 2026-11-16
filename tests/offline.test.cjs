@@ -33,7 +33,7 @@ function worker() {
 test('offline cache stays bounded across query variants and ignores unrelated requests', async () => {
   const w = worker(); await w.dispatch('install');
   for (let i = 0; i < 100; i++) await w.dispatch('fetch', `${w.root}?share=${i}`);
-  assert.equal(w.stores.get('kolam-v5').size, 8);
+  assert.equal(w.stores.get('kolam-v6').size, 11);
   assert.equal(await w.dispatch('fetch', `${w.root}unrelated.png`), undefined);
   assert.equal(await w.dispatch('fetch', 'https://other.test/index.html'), undefined);
   w.setOffline();
@@ -48,5 +48,5 @@ test('HTTP errors cannot overwrite offline files; activation preserves other app
   assert.equal(await (await w.dispatch('fetch', `${w.root}index.html`)).text(), 'installed');
   w.stores.set('kolam-v4', new Map()); w.stores.set('another-app', new Map());
   await w.dispatch('activate');
-  assert.deepEqual([...w.stores.keys()], ['kolam-v5', 'another-app']);
+  assert.deepEqual([...w.stores.keys()], ['kolam-v6', 'another-app']);
 });
