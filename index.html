@@ -285,7 +285,7 @@ const voices=new Set();
 function releaseVoice(v){v.o.onended=null;v.o.disconnect();v.g.disconnect();voices.delete(v)}
 function stopAudio(){
   for(const v of voices){try{v.o.stop()}catch(e){}releaseVoice(v)}
-  if(ac&&ac.state==='running')ac.suspend().catch(()=>{});
+  if(ac&&ac.state!=='closed')ac.suspend().catch(()=>{});
 }
 const SCALE=[0,2,4,7,9,12,14,16,19,21,24];
 function note(semi,when,dur,vol){
