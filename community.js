@@ -126,6 +126,7 @@
     async function refreshPlayer() {
       try {
         player = await request("me");
+        store.lastUsername = player.username;
         for (const key of player.progress) {
           const m = key.match(/^n-(\d+)$/);
           if (m) doneSet.add(+m[1]);
@@ -150,7 +151,7 @@
       try {
         await fn(Object.fromEntries(new FormData(form)));
         form
-          .querySelectorAll("input[type=password]")
+          .querySelectorAll("input[name=password]")
           .forEach((i) => (i.value = ""));
       } catch (e) {
         $("accountStatus").textContent = navigator.onLine
@@ -243,6 +244,8 @@
       try {
         await request("auth/sign-out", {});
         player = null;
+        delete store.lastUsername;
+        save();
         renderPlayer();
         $("accountStatus").textContent =
           "Signed out. This phone’s local progress is still here.";
@@ -281,6 +284,8 @@
           password: $("deletePassword").value,
         });
         player = null;
+        delete store.lastUsername;
+        save();
         renderPlayer();
         $("accountStatus").textContent =
           "Your account and cloud progress were deleted.";
@@ -431,7 +436,8 @@
           turns: 0,
           hints: 0,
           finished: false,
-          username: player?.username,
+          username:
+            player?.username || (!navigator.onLine ? store.lastUsername : null),
         });
         $("puzzleTimer").textContent = "0:00";
         $("moveCount").textContent = "0 turns · 0 hints";

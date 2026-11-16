@@ -142,6 +142,32 @@ const baseURL = process.env.BASE_URL || "http://127.0.0.1:8772";
         .textContent.includes("Your progress"),
     );
     assert.equal(await page.evaluate(() => doneSet.has(1)), true);
+    if (new URL(baseURL).protocol === "http:")
+      await page.evaluate(() => navigator.serviceWorker.register("/sw.js"));
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller);
+    await context.setOffline(true);
+    await page.reload();
+    await page.evaluate(() => loadPuzzleKey("r-diya-6-h"));
+    await page.waitForFunction(() => cur?.link === "r-diya-6-h");
+    await page.evaluate(() => {
+      while (!won) hint();
+    });
+    assert(
+      (await page.evaluate(() => store.outbox)).some(
+        (x) => x.key === "r-diya-6-h" && x.username === name,
+      ),
+    );
+    await context.setOffline(false);
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await page.waitForFunction(async () => {
+      const r = await fetch("/api/me");
+      return r.ok && (await r.json()).progress.includes("r-diya-6-h");
+    });
+    console.log(
+      "PASS signed-in offline reload, practice and progress sync after reconnection",
+    );
     console.log(
       "PASS sign up, cookie login, recovery, verified score, leaderboard and cross-reload progress",
     );

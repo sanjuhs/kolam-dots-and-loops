@@ -5,6 +5,7 @@ COPY server/package*.json ./
 RUN npm_config_jobs=2 npm ci --omit=dev && npm cache clean --force
 
 FROM node:22-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app/server
 COPY --from=dependencies /build/node_modules ./node_modules
 COPY server/ ./
